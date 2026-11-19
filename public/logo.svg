@@ -1,0 +1,8 @@
+<!-- Placeholder logo until we have the real Picklr file -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0B0B0C"/>
+  <circle cx="256" cy="200" r="92" fill="none" stroke="#0075E7" stroke-width="28"/>
+  <circle cx="226" cy="172" r="12" fill="#0075E7"/><circle cx="286" cy="172" r="12" fill="#0075E7"/>
+  <circle cx="256" cy="228" r="12" fill="#0075E7"/>
+  <text x="256" y="420" text-anchor="middle" font-family="Impact, Anton, sans-serif" font-size="120" fill="#F8F2E6" letter-spacing="6">PMH</text>
+</svg>

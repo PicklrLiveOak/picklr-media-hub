@@ -1,0 +1,36 @@
+{
+  "name": "picklr-media-hub",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test:rls": "node tests/rls.test.mjs",
+    "icons": "pwa-assets-generator --preset minimal-2023 public/logo.svg"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
+    "browser-image-compression": "^2.0.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.6"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.17",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vite-pwa/assets-generator": "^2.0.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "supabase": "^3.2.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "5.9",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
+    "workbox-core": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-window": "^7.4.1"
+  }
+}

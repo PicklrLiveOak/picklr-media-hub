@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* Brand tokens → usable as bg-ink, text-blue, bg-cream, font-display, etc. */
+@theme {
+  --color-ink: #0B0B0C;
+  --color-blue: #0075E7;
+  --color-cream: #F8F2E6;
+  --color-line: #E4DCCB;      /* subtle borders on cream */
+  --font-display: "Anton", Impact, sans-serif;
+  --font-sans: "Montserrat", system-ui, sans-serif;
+}
+
+html, body { background: var(--color-cream); color: var(--color-ink); }
+body { -webkit-tap-highlight-color: transparent; }
+
+/* Headlines: Anton, uppercase */
+.h-display { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; line-height: 1; }
+
+/* Form controls — 16px text stops iPhone from zooming in on focus */
+.input {
+  width: 100%; border: 1px solid var(--color-line); background: white; border-radius: 0.6rem;
+  padding: 0.65rem 0.75rem; font-size: 16px;
+}
+.input:focus { outline: 2px solid var(--color-blue); outline-offset: -1px; }
+.label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  border-radius: 0.6rem; padding: 0.65rem 1rem; font-weight: 700; font-size: 0.95rem;
+}
+.btn-primary { background: var(--color-blue); color: white; }
+.btn-dark { background: var(--color-ink); color: var(--color-cream); }
+.btn-ghost { background: white; border: 1px solid var(--color-line); }
+.btn:disabled { opacity: 0.5; }
+
+.card { background: white; border: 1px solid var(--color-line); border-radius: 0.9rem; }
+
+/* Safe areas for notched phones when installed full-screen */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
