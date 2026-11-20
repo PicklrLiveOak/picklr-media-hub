@@ -145,6 +145,9 @@ You need these first:
    - `META_APP_ID` = your App ID
    - `META_APP_SECRET` = your App Secret (keep this one private)
 5. **Connect from Media Hub.** Open **Media Hub → Insights → Connect** and follow the 3 steps on screen: open the Graph API Explorer, add the permissions, generate a token, paste it, and click **Connect**.
+   - The permissions are `pages_show_list`, `pages_read_engagement`, `read_insights`, `instagram_basic`, `instagram_manage_insights`, `business_management`, `ads_read` and `ads_management`.
+   - The last two are required when the Page is shared to you through Business Manager instead of owned by you. The app only reads; it never changes or spends anything on ads.
+   - Your access to the Page and the Instagram account must include **Insights**.
    - The first sync runs straight away.
    - After that it syncs every night at 2:15 AM, and you can press **Sync now** at any time.
 

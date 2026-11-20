@@ -241,7 +241,7 @@ function Connection({ accounts, onChange }: { accounts: SocialAccount[]; onChang
         <div className="mt-3 space-y-3 border-t border-line pt-3">
           <ol className="text-sm list-decimal pl-5 space-y-1 text-stone-700">
             <li>Open Meta's <a className="text-blue underline" href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noreferrer">Graph API Explorer</a> and pick the Picklr Media Hub app.</li>
-            <li>Add permissions: <code className="text-xs">pages_show_list, pages_read_engagement, read_insights, instagram_basic, instagram_manage_insights, business_management</code>.</li>
+            <li>Add permissions: <code className="text-xs">pages_show_list, pages_read_engagement, read_insights, instagram_basic, instagram_manage_insights, business_management, ads_read, ads_management</code>. (The two ads ones are needed when the Page is shared to you through Business Manager — the app only reads, it never touches ads.)</li>
             <li>Click <b>Generate Access Token</b>, choose The Picklr Live Oak Page + Instagram, then copy the token here.</li>
           </ol>
           <textarea className="input font-mono min-h-20" placeholder="Paste the access token" value={token}
