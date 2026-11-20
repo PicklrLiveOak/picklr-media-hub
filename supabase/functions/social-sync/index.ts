@@ -159,9 +159,55 @@ async function syncFacebook(db: SupabaseClient, token: string, pageId: string) {
   return rows.length;
 }
 
+// ---------- Token health ------------------------------------------------------
+// Asks Meta whether the stored token still works (debug_token) and saves the
+// answer on social_accounts so Insights + Admin can show it.
+const WARN_DAYS = 14;
+
+async function checkToken(db: SupabaseClient, token: string) {
+  const appId = Deno.env.get('META_APP_ID'), secret = Deno.env.get('META_APP_SECRET');
+  let status: 'ok' | 'warning' | 'invalid' | 'unknown' = 'unknown';
+  let message = 'Could not check the token';
+  let expires: string | null = null;
+  if (appId && secret) {
+    try {
+      const { data: d } = await graph('debug_token', `${appId}|${secret}`, { input_token: token });
+      // 0 means "no expiry". Use the earliest real date of the two Meta reports.
+      const dates = [d.expires_at, d.data_access_expires_at].filter((n: number) => n && n > 0) as number[];
+      expires = dates.length ? new Date(Math.min(...dates) * 1000).toISOString() : null;
+      if (!d.is_valid) {
+        status = 'invalid';
+        message = d.error?.message ?? 'Meta says this token is no longer valid';
+      } else if (expires && Date.parse(expires) - Date.now() < WARN_DAYS * 864e5) {
+        status = 'warning';
+        message = `Token expires ${new Date(expires).toLocaleDateString('en-US', { timeZone: TZ, month: 'short', day: 'numeric' })} — reconnect before then`;
+      } else {
+        status = 'ok';
+        message = expires ? `Valid until ${new Date(expires).toLocaleDateString('en-US', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' })}` : 'Valid · never expires';
+      }
+    } catch (e) {
+      message = `Token check failed: ${(e as Error).message}`;
+    }
+  }
+  // Log only when the status changes, so the activity log isn't spammed nightly.
+  const { data: prev } = await db.from('social_accounts').select('token_status').limit(1).maybeSingle();
+  await db.from('social_accounts').update({
+    token_status: status, token_message: message, token_checked_at: new Date().toISOString(), token_expires_at: expires,
+  }).neq('platform', '');
+  if (prev && prev.token_status !== status && (status === 'invalid' || status === 'warning' || prev.token_status !== 'unknown')) {
+    await db.from('activity_log').insert({ source: 'system', action: `insights.token_${status}`, summary: `Meta token: ${message}` });
+  }
+  return { status, message };
+}
+
 async function runSync(db: SupabaseClient) {
   const { data: token } = await db.rpc('get_social_token');
   if (!token) return { ok: false, error: 'Not connected yet' };
+  const health = await checkToken(db, token);
+  if (health.status === 'invalid') {
+    await db.from('social_accounts').update({ last_error: `Token stopped working — reconnect on the Insights page. (${health.message})` }).neq('platform', '');
+    return { ok: false, error: health.message, token: health };
+  }
   const { data: accounts } = await db.from('social_accounts').select('*');
   const result: Record<string, unknown> = {};
   for (const a of accounts ?? []) {
@@ -178,7 +224,7 @@ async function runSync(db: SupabaseClient) {
     }
   }
   await db.from('activity_log').insert({ source: 'system', action: 'insights.sync', summary: `Insights synced — ${JSON.stringify(result)}` });
-  return { ok: true, result };
+  return { ok: true, result, token: health };
 }
 
 // ---------- Request handler -------------------------------------------------
@@ -243,6 +289,12 @@ Deno.serve(async (req) => {
       const last = Math.max(0, ...(data ?? []).map((a) => Date.parse(a.last_synced_at ?? '') || 0));
       if (Date.now() - last < 2 * 60_000) return reply({ skipped: 'Synced less than 2 minutes ago' });
       return reply(await runSync(db));
+    }
+
+    if (body.action === 'check') {
+      const { data: token } = await db.rpc('get_social_token');
+      if (!token) return reply({ error: 'Not connected yet' }, 400);
+      return reply({ token: await checkToken(db, token) });
     }
 
     if (body.action === 'disconnect') {

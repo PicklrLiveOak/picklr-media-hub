@@ -67,6 +67,21 @@ export function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
   );
 }
 
+/** Red/amber notice when the Meta connection needs attention (null when fine). */
+export function TokenWarning({ accounts }: { accounts: { token_status: string; token_message: string | null; last_error: string | null }[] }) {
+  const a = accounts.find((x) => x.token_status === 'invalid') ?? accounts.find((x) => x.token_status === 'warning')
+    ?? accounts.find((x) => x.last_error);
+  if (!a) return null;
+  const bad = a.token_status === 'invalid' || (!!a.last_error && a.token_status !== 'warning');
+  return (
+    <div className={`rounded-xl p-3 text-sm border ${bad ? 'bg-red-50 border-red-300 text-red-800' : 'bg-amber-50 border-amber-300 text-amber-900'}`}>
+      <b>{bad ? '⚠️ Instagram/Facebook sync needs attention' : '⏳ Meta token expiring soon'}</b>
+      <div className="mt-0.5">{a.token_status === 'invalid' || a.token_status === 'warning' ? a.token_message : a.last_error}</div>
+      <div className="mt-1 text-xs">Fix: Insights → Settings → paste a fresh User token from the Graph API Explorer → Connect. Past numbers are kept.</div>
+    </div>
+  );
+}
+
 export function Toggle({ checked, onChange, label, disabled }: {
   checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean;
 }) {

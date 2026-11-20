@@ -153,6 +153,8 @@ You need these first:
 
 The token is stored in a locked part of the database that the website can't read. Only the sync function can use it.
 
+**Every 90 days: reconnect.** Meta's own rules stop an app's "data access" 90 days after you last approved it. Media Hub checks the token every night and shows an amber warning on **Insights** and **Admin → Overview** 14 days before that date (and red if it ever stops working). To renew it, open the Graph API Explorer (User Token, same 9 permissions), click **Generate Access Token**, and paste it into **Insights → Settings → Connect**. You can also click **Check token** at any time.
+
 **What's pulled:**
 - Instagram: followers, plus views, reach, likes, comments, shares, saves, reposts and total interactions for each of your last 50 posts.
 - Facebook: followers, plus views, reach, reactions, comments and shares for each of your last 50 posts.

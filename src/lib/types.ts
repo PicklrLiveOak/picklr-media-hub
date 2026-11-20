@@ -106,6 +106,10 @@ export type SocialAccount = {
   connected_at: string;
   last_synced_at: string | null;
   last_error: string | null;
+  token_status: 'ok' | 'warning' | 'invalid' | 'unknown';
+  token_message: string | null;
+  token_checked_at: string | null;
+  token_expires_at: string | null;
 };
 export type SocialDaily = { platform: string; day: string; followers: number | null; reach: number | null; views: number | null; interactions: number | null };
 export type SocialPost = {

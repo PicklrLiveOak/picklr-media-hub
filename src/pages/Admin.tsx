@@ -9,7 +9,7 @@ import type { Activity, SocialAccount } from '../lib/types';
 import Team from './Team';
 import { GroupSettings } from './ChatRoom';
 import { NewGroup } from './Chats';
-import { Avatar, PageHeader, StatusChip } from '../components/ui';
+import { Avatar, PageHeader, StatusChip, TokenWarning } from '../components/ui';
 
 const TABS = ['overview', 'people', 'chats', 'activity'] as const;
 type Tab = (typeof TABS)[number];
@@ -72,6 +72,7 @@ function Overview() {
   const open = STATUSES.filter((s) => s !== 'Posted').reduce((n, s) => n + (counts[s] ?? 0), 0);
   return (
     <div className="space-y-5">
+      <TokenWarning accounts={accounts} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Open requests" value={open} to="/board" />
         <Stat label="Overdue" value={overdue} tone={overdue ? 'bad' : undefined} to="/board" />
@@ -98,6 +99,9 @@ function Overview() {
               <b className="capitalize">{a.platform}</b> · {a.username ? `@${a.username}` : a.name} · {a.followers?.toLocaleString() ?? '—'} followers
               <div className={`text-xs ${a.last_error ? 'text-red-600' : 'text-stone-500'}`}>
                 {a.last_error ? `Last sync failed: ${a.last_error}` : a.last_synced_at ? `Synced ${fmtDateTime(a.last_synced_at)}` : 'Not synced yet'}
+              </div>
+              <div className={`text-xs ${a.token_status === 'ok' ? 'text-emerald-700' : a.token_status === 'unknown' ? 'text-stone-500' : 'text-red-600'}`}>
+                Token: {a.token_message ?? 'not checked yet'}
               </div>
             </div>
           ))}

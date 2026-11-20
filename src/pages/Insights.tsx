@@ -9,7 +9,7 @@ import { fmtDateTime } from '../lib/format';
 import { RANGES, TARGET, fmtN, fmtPct, interactionsOf, useInsights, type Platform, type RangeKey } from '../lib/insights';
 import type { SocialAccount, SocialPost } from '../lib/types';
 import LineChart from '../components/LineChart';
-import { ErrorNote, PageHeader } from '../components/ui';
+import { ErrorNote, PageHeader, TokenWarning } from '../components/ui';
 
 export default function Insights() {
   const { can } = useAuth();
@@ -39,6 +39,7 @@ export default function Insights() {
         </div>
       </div>
 
+      {can('insights.manage') && <TokenWarning accounts={d.accounts} />}
       {can('insights.manage') && <Connection accounts={d.accounts} onChange={d.refresh} />}
       {!connected && !can('insights.manage') && (
         <p className="card p-4 text-sm">Instagram and Facebook aren't connected yet — Nehemiah will set that up.</p>
@@ -213,6 +214,7 @@ function Connection({ accounts, onChange }: { accounts: SocialAccount[]; onChang
       else if (res.skipped) setMsg(res.skipped);
       else if (res.result) setMsg(`Synced: ${Object.entries(res.result).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
       else if (res.disconnected) setMsg('Disconnected. Past numbers are kept.');
+      else if (res.token) setMsg(`Token: ${res.token.message}`);
       onChange();
     } catch (e) { setError((e as Error).message); }
     setBusy('');
@@ -231,9 +233,20 @@ function Connection({ accounts, onChange }: { accounts: SocialAccount[]; onChang
               </span>
             </div>
           )) : <p className="text-xs text-stone-500">Not connected. Syncs nightly at 2:15 AM once connected.</p>}
+          {accounts[0] && (
+            <div className="text-xs mt-0.5">
+              <b>Token</b>{' '}
+              <span className={{ ok: 'text-emerald-700', warning: 'text-amber-700', invalid: 'text-red-600', unknown: 'text-stone-500' }[accounts[0].token_status]}>
+                {accounts[0].token_status === 'ok' ? '✓ ' : accounts[0].token_status === 'unknown' ? '' : '⚠️ '}
+                {accounts[0].token_message ?? 'Not checked yet'}
+              </span>
+              {accounts[0].token_checked_at && <span className="text-stone-500"> · checked {fmtDateTime(accounts[0].token_checked_at)}</span>}
+            </div>
+          )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap justify-end gap-2 shrink-0">
           {accounts.length > 0 && <button className="btn btn-primary text-sm" disabled={!!busy} onClick={() => run('sync', { action: 'sync' })}>{busy === 'sync' ? 'Syncing…' : 'Sync now'}</button>}
+          {accounts.length > 0 && <button className="btn btn-ghost text-sm" disabled={!!busy} onClick={() => run('check', { action: 'check' })}>{busy === 'check' ? 'Checking…' : 'Check token'}</button>}
           <button className="btn btn-ghost text-sm" onClick={() => setOpen(!open)}>{open ? 'Close' : accounts.length ? 'Settings' : 'Connect'}</button>
         </div>
       </div>
