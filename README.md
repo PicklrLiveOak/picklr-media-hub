@@ -117,3 +117,42 @@ Run these in Terminal from the project folder:
 6. Sign in as `test.lead`. They should see all Sales requests but not the Front Desk one.
 7. On the Team page, turn off **Board** for `test.strategy`. Sign in as them and the tab is gone.
 8. When you're done: `node scripts/seed.mjs remove-test`
+
+---
+
+## Step 2: chat, admin dashboard, Instagram + Facebook insights
+
+### What to try
+1. **Admin → Chats**: open "Media Team" and tick people to add them. The "+ Sales"-style buttons add a whole department at once. You can also create new groups here or from **Chat → + Group**.
+2. **Chat**: send a message with `@username`. The person gets a red **@** badge and a count on the Chat tab. Use **+ Message** to start a private DM.
+3. **Request comments**: open any request and scroll to **Comments**. Media team members can tick **🔒 Internal note**, which the requester never sees. If the media team @mentions someone in a request thread, that person gets access to the request.
+4. **Admin → Activity**: every status change, assignment, permission change, account change and group change is logged here.
+5. **New request form**: Department is now a free-text box, with the department list offered as suggestions.
+
+### Connecting Instagram + Facebook (one time, about 15 minutes)
+
+You need these first:
+- The Picklr Live Oak Instagram set up as a **Business or Creator** account, linked to the club's **Facebook Page**.
+- Admin access to that Facebook Page.
+
+1. **Create a Meta app.** Go to https://developers.facebook.com/apps and choose **Create app**.
+   - Name: `Picklr Media Hub`
+   - Use case: **Other**, then type **Business**
+   - Leave it in **Development** mode. App Review isn't needed when only you use it.
+2. **Add the Instagram product.** In the app, add **Instagram → API setup with Facebook login**.
+3. **Copy the app's ID and secret.** Go to **App settings → Basic** and copy the **App ID** and **App Secret**.
+4. **Store them in Supabase.** In the Supabase dashboard, go to **Edge Functions → Secrets → Add new secret** and add both:
+   - `META_APP_ID` = your App ID
+   - `META_APP_SECRET` = your App Secret (keep this one private)
+5. **Connect from Media Hub.** Open **Media Hub → Insights → Connect** and follow the 3 steps on screen: open the Graph API Explorer, add the permissions, generate a token, paste it, and click **Connect**.
+   - The first sync runs straight away.
+   - After that it syncs every night at 2:15 AM, and you can press **Sync now** at any time.
+
+The token is stored in a locked part of the database that the website can't read. Only the sync function can use it.
+
+**What's pulled:**
+- Instagram: followers, plus views, reach, likes, comments, shares, saves, reposts and total interactions for each of your last 50 posts.
+- Facebook: followers, plus views, reach, reactions, comments and shares for each of your last 50 posts.
+- Daily account reach and views for both.
+
+**Report:** go to **Insights → 📄 Report**, pick a date range, then **Print / Save as PDF** or **Copy summary**.

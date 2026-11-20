@@ -1,6 +1,7 @@
 // Board: kanban (swipe sideways on a phone, drag cards on a computer) or list view.
 // Updates live when anyone changes a request.
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { PILLARS, REQUEST_TYPES, STATUSES } from '../lib/constants';
@@ -62,11 +63,14 @@ export default function Board() {
   return (
     <div>
       <PageHeader title="Board" right={
+        <div className="flex items-center gap-2">
+        <Link to="/new" className="btn btn-primary text-sm !py-1.5">＋ New</Link>
         <div className="flex rounded-lg overflow-hidden border border-line text-sm font-semibold">
           {(['kanban', 'list'] as View[]).map((v) => (
             <button key={v} onClick={() => setView(v)}
               className={`px-3 py-1.5 capitalize ${view === v ? 'bg-ink text-cream' : 'bg-white'}`}>{v}</button>
           ))}
+        </div>
         </div>
       } />
 

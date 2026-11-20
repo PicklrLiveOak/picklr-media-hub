@@ -10,10 +10,10 @@ import { ErrorNote, Field, PageHeader } from '../components/ui';
 import LinksEditor, { cleanLinks } from '../components/LinksEditor';
 
 export default function NewRequest() {
-  const { me, team, departments, can } = useAuth();
+  const { me, team, departments, can, deptName } = useAuth();
   const nav = useNavigate();
   const [f, setF] = useState({
-    title: '', requester_id: me!.id, department_id: me!.department_id ?? '', type: 'Graphic',
+    title: '', requester_id: me!.id, department_label: deptName(me!.department_id), type: 'Graphic',
     event_name: '', event_date: '', needed_by: '', details: '',
   });
   const [links, setLinks] = useState<DriveLink[]>([]);
@@ -29,7 +29,7 @@ export default function NewRequest() {
       const { data: req, error } = await supabase.from('requests').insert({
         title: f.title.trim(),
         requester_id: f.requester_id,
-        department_id: f.department_id || null,
+        department_label: f.department_label.trim() || null,
         type: f.type,
         event_name: f.event_name || null,
         event_date: f.event_date || null,
@@ -71,10 +71,12 @@ export default function NewRequest() {
           </select>
         </Field>
         <Field label="Department">
-          <select className="input" value={f.department_id} onChange={set('department_id')}>
-            <option value="">—</option>
-            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
+          {/* Free text; the list just offers suggestions */}
+          <input className="input" list="dept-suggestions" maxLength={80} placeholder="e.g. Sales"
+            value={f.department_label} onChange={set('department_label')} />
+          <datalist id="dept-suggestions">
+            {departments.map((d) => <option key={d.id} value={d.name} />)}
+          </datalist>
         </Field>
       </div>
 

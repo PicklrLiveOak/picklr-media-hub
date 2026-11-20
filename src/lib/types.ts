@@ -25,6 +25,7 @@ export type MediaRequest = {
   title: string;
   requester_id: string;
   department_id: number | null;
+  department_label: string | null;
   type: string;
   event_name: string | null;
   event_date: string | null;
@@ -51,4 +52,65 @@ export type RequestFile = {
   size_bytes: number;
   uploaded_by: string;
   created_at: string;
+};
+
+// ---- Chat ----
+export type ChatRow = {
+  id: string;
+  kind: 'dm' | 'group' | 'request';
+  name: string | null;
+  request_id: string | null;
+  request_number: number | null;
+  request_title: string | null;
+  last_message_at: string;
+  last_body: string | null;
+  last_author: string | null;
+  unread: number;
+  mentioned: boolean;
+  other_user: string | null;
+  member_count: number;
+};
+
+export type Message = {
+  id: string;
+  chat_id: string;
+  author_id: string;
+  body: string;
+  mentions: string[];
+  attachment_path: string | null;
+  link_url: string | null;
+  internal: boolean;
+  created_at: string;
+};
+
+// ---- Admin ----
+export type Activity = {
+  id: number;
+  at: string;
+  actor_id: string | null;
+  source: 'app' | 'mcp' | 'system';
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  summary: string;
+  details: Record<string, unknown> | null;
+};
+
+// ---- Insights ----
+export type SocialAccount = {
+  platform: 'instagram' | 'facebook';
+  external_id: string;
+  name: string | null;
+  username: string | null;
+  followers: number | null;
+  connected_at: string;
+  last_synced_at: string | null;
+  last_error: string | null;
+};
+export type SocialDaily = { platform: string; day: string; followers: number | null; reach: number | null; views: number | null; interactions: number | null };
+export type SocialPost = {
+  id: string; platform: 'instagram' | 'facebook'; external_id: string; posted_at: string; media_type: string | null;
+  caption: string | null; permalink: string | null; thumbnail_url: string | null;
+  views: number | null; reach: number | null; likes: number | null; comments: number | null; shares: number | null;
+  saves: number | null; reposts: number | null; interactions: number | null; pillar: string | null; request_id: string | null;
 };

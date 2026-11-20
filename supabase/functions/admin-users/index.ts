@@ -31,6 +31,8 @@ Deno.serve(async (req) => {
   });
   const { data: allowed } = await caller.rpc('has_perm', { p: 'team.manage' });
   if (!allowed) return reply({ error: 'Only the admin can manage accounts.' }, 403);
+  const { data: me } = await caller.auth.getUser();
+  const callerId = me.user?.id;
 
   // 2) Do the privileged work with the service role.
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -67,6 +69,8 @@ Deno.serve(async (req) => {
         await admin.auth.admin.deleteUser(created.user.id); // undo half-made account
         throw profileError;
       }
+      await admin.from('activity_log').insert({ actor_id: callerId, action: 'user.created',
+        target_type: 'user', target_id: created.user.id, summary: `Account created: ${body.full_name || username} (@${username}, ${body.role})` });
       return reply({ id: created.user.id });
     }
 
@@ -74,18 +78,21 @@ Deno.serve(async (req) => {
       if (String(body.password ?? '').length < 8) throw new Error('Password must be at least 8 characters');
       const { error } = await admin.auth.admin.updateUserById(body.user_id, { password: body.password });
       if (error) throw error;
+      const { data: who } = await admin.from('profiles').select('full_name').eq('id', body.user_id).single();
+      await admin.from('activity_log').insert({ actor_id: callerId, action: 'user.password_reset',
+        target_type: 'user', target_id: body.user_id, summary: `Password reset for ${who?.full_name ?? 'user'}` });
       return reply({ ok: true });
     }
 
     if (body.action === 'set_active') {
-      const { data: me } = await caller.auth.getUser();
-      if (me.user?.id === body.user_id) throw new Error("You can't deactivate yourself");
+      if (callerId === body.user_id) throw new Error("You can't deactivate yourself");
       // Banning blocks sign-in; the profile flag removes all permissions in RLS.
       const { error } = await admin.auth.admin.updateUserById(body.user_id, {
         ban_duration: body.active ? 'none' : '876000h', // ~100 years
       });
       if (error) throw error;
-      await admin.from('profiles').update({ active: !!body.active }).eq('id', body.user_id);
+      // Done as the admin so the activity log records who did it
+      await caller.from('profiles').update({ active: !!body.active }).eq('id', body.user_id);
       return reply({ ok: true });
     }
 

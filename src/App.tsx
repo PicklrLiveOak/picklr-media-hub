@@ -8,7 +8,12 @@ import Home from './pages/Home';
 import NewRequest from './pages/NewRequest';
 import Board from './pages/Board';
 import RequestDetail from './pages/RequestDetail';
-import Team from './pages/Team';
+import Admin from './pages/Admin';
+import Chats from './pages/Chats';
+import ChatRoom from './pages/ChatRoom';
+import Insights from './pages/Insights';
+import InsightsReport from './pages/InsightsReport';
+import { ChatsProvider } from './lib/chats';
 import Me from './pages/Me';
 
 // Hides a page unless the person has the permission (the database also blocks the data).
@@ -24,17 +29,24 @@ function Shell() {
   if (!me) return <Login note="Your account has no profile yet — ask Nehemiah to finish setting it up." />;
 
   return (
+    <ChatsProvider>
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="new" element={<Gate perm="section.requests"><NewRequest /></Gate>} />
         <Route path="board" element={<Gate perm="section.board"><Board /></Gate>} />
         <Route path="r/:number" element={<RequestDetail />} />
-        <Route path="team" element={<Gate perm="team.manage"><Team /></Gate>} />
+        <Route path="chat" element={<Gate perm="section.chat"><Chats /></Gate>} />
+        <Route path="chat/:id" element={<ChatRoom />} />
+        <Route path="insights" element={<Gate perm="section.insights"><Insights /></Gate>} />
+        <Route path="insights/report" element={<Gate perm="section.insights"><InsightsReport /></Gate>} />
+        <Route path="admin" element={<Gate perm="team.manage"><Admin /></Gate>} />
+        <Route path="team" element={<Navigate to="/admin?tab=people" replace />} />
         <Route path="me" element={<Me />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </ChatsProvider>
   );
 }
 

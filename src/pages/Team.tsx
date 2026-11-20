@@ -25,9 +25,10 @@ export default function Team() {
 
   return (
     <div className="max-w-2xl">
-      <PageHeader title="Team" right={
-        <button className="btn btn-primary text-sm" onClick={() => setAdding(!adding)}>{adding ? 'Close' : '＋ Add person'}</button>
-      } />
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <p className="text-sm text-stone-600">Tap a person to change their role, department or permissions.</p>
+        <button className="btn btn-primary text-sm shrink-0" onClick={() => setAdding(!adding)}>{adding ? 'Close' : '＋ Add person'}</button>
+      </div>
 
       {adding && <AddPerson onDone={() => { setAdding(false); reload(); }} />}
 

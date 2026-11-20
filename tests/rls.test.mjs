@@ -30,7 +30,7 @@ await db.exec(`
 `);
 
 const dir = 'supabase/migrations';
-for (const f of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
+for (const f of readdirSync(dir).filter((f) => f.endsWith('.sql') && !f.includes('_cron')).sort()) {
   await db.exec(readFileSync(join(dir, f), 'utf8'));
 }
 
@@ -197,6 +197,119 @@ await check('deactivated users lose all permissions', async () => {
   await as('admin', 'update profiles set active=false where id=$1', [U.exec]);
   const n = (await as('exec', 'select id from requests')).length;
   expect(n === 0, `still sees ${n}`);
+});
+
+// ---------------------------------------------------------------------------
+console.log('\nDepartment text box');
+await check('department is filled from the requester profile automatically', async () => {
+  const [r] = await as('staff', `insert into requests (title, type, department_label) values ('Dept test','Photo','Sales floor') returning department_id, department_label`);
+  expect(r.department_id === SALES && r.department_label === 'Sales floor', JSON.stringify(r));
+});
+
+console.log('\nChat');
+const [{ start_dm: dm }] = await as('staff', 'select start_dm($1)', [U.staff2]);
+await check('a DM is private to its two people', async () => {
+  await as('staff', `insert into messages (chat_id, body) values ($1, 'hey')`, [dm]);
+  expect((await as('staff2', 'select * from messages where chat_id=$1', [dm])).length === 1, 'recipient cannot read');
+  for (const u of ['admin', 'strategy', 'claude', 'lead']) {
+    const n = (await as(u, 'select * from messages where chat_id=$1', [dm])).length;
+    expect(n === 0, `${u} can read the DM`);
+  }
+});
+await check('starting the same DM again reuses it', async () => {
+  const [{ start_dm: again }] = await as('staff2', 'select start_dm($1)', [U.staff]);
+  expect(again === dm, 'created a duplicate');
+});
+await check('nobody can post as someone else', () =>
+  expectError(as('staff2', `insert into messages (chat_id, body, author_id) values ($1, 'fake', $2)`, [dm, U.staff])));
+await check('staff cannot create group chats', () =>
+  expectError(as('staff', `select create_group('Secret', array[$1]::uuid[])`, [U.staff2])));
+const [{ create_group: grp }] = await as('admin', `select create_group('Media Team test', array[$1, $2]::uuid[])`, [U.strategy, U.staff]);
+await check('group members can read and post; outsiders cannot', async () => {
+  await as('staff', `insert into messages (chat_id, body, mentions) values ($1, 'hi @test', array[$2]::uuid[])`, [grp, U.strategy]);
+  expect((await as('strategy', 'select * from messages where chat_id=$1', [grp])).length === 1, 'member cannot read');
+  expect((await as('staff2', 'select * from messages where chat_id=$1', [grp])).length === 0, 'outsider can read');
+  await expectError(as('staff2', `insert into messages (chat_id, body) values ($1, 'let me in')`, [grp]));
+});
+await check('unread count and @mention flag show in the chat list', async () => {
+  const row = (await as('strategy', 'select * from chat_list() where id=$1', [grp]))[0];
+  expect(row?.unread === 1 && row?.mentioned === true, JSON.stringify(row));
+  await as('strategy', 'select mark_read($1)', [grp]);
+  const after = (await as('strategy', 'select * from chat_list() where id=$1', [grp]))[0];
+  expect(after.unread === 0 && after.mentioned === false, JSON.stringify(after));
+});
+await check('only the group manager can change members', async () => {
+  await expectError(as('staff', 'select set_group_members($1, array[]::uuid[])', [grp]));
+  await as('admin', 'select set_group_members($1, array[$2,$3]::uuid[])', [grp, U.admin, U.strategy]);
+  expect((await as('staff', 'select * from messages where chat_id=$1', [grp])).length === 0, 'removed member still reads');
+});
+await check('turning off Chat hides chats', async () => {
+  await as('admin', `update profiles set permissions = array_remove(permissions, 'section.chat') where id=$1`, [U.staff2]);
+  expect((await as('staff2', 'select * from messages where chat_id=$1', [dm])).length === 0, 'still sees DM');
+  await as('admin', `update profiles set permissions = permissions || '{section.chat}' where id=$1`, [U.staff2]);
+});
+
+console.log('\nRequest threads');
+const [rq] = await as('staff', `insert into requests (title, type) values ('Thread test','Reel') returning id`);
+const [{ request_chat: thread }] = await as('staff', 'select request_chat($1)', [rq.id]);
+await check('requester and media team share the thread', async () => {
+  await as('staff', `insert into messages (chat_id, body) values ($1, 'Need it Friday')`, [thread]);
+  expect((await as('strategy', 'select * from messages where chat_id=$1', [thread])).length === 1, 'strategy cannot read');
+  expect((await as('staff2', 'select * from messages where chat_id=$1', [thread])).length === 0, 'outsider reads thread');
+});
+await check('internal notes are hidden from the requester', async () => {
+  await as('strategy', `insert into messages (chat_id, body, internal) values ($1, 'budget is tight', true)`, [thread]);
+  const seen = await as('staff', 'select body from messages where chat_id=$1', [thread]);
+  expect(seen.length === 1 && seen[0].body === 'Need it Friday', JSON.stringify(seen));
+  await expectError(as('staff', `insert into messages (chat_id, body, internal) values ($1, 'sneaky', true)`, [thread]));
+});
+await check('media team @mention loops someone into the request', async () => {
+  expect((await as('staff2', 'select id from requests where id=$1', [rq.id])).length === 0, 'already visible');
+  await as('strategy', `insert into messages (chat_id, body, mentions) values ($1, 'cc', array[$2]::uuid[])`, [thread, U.staff2]);
+  expect((await as('staff2', 'select id from requests where id=$1', [rq.id])).length === 1, 'not looped in');
+  expect((await as('staff2', 'select * from messages where chat_id=$1', [thread])).length === 2, 'should see 2 non-internal');
+});
+await check('staff @mention does NOT grant access', async () => {
+  const [r2] = await as('staff', `insert into requests (title, type) values ('Private','Photo') returning id`);
+  const [{ request_chat: t2 }] = await as('staff', 'select request_chat($1)', [r2.id]);
+  await as('staff', `insert into messages (chat_id, body, mentions) values ($1, 'hey', array[$2]::uuid[])`, [t2, U.lead]);
+  expect((await as('lead', 'select id from requests where id=$1', [r2.id])).length === 0, 'lead got access');
+});
+await check('chat uploads follow chat access', async () => {
+  await as('staff', `insert into storage.objects (bucket_id, name) values ('uploads', 'chat/'||$1::text||'/a.jpg')`, [dm]);
+  await expectError(as('lead', `insert into storage.objects (bucket_id, name) values ('uploads', 'chat/'||$1::text||'/b.jpg')`, [dm]));
+});
+
+console.log('\nActivity log');
+await check('changes are logged and only the admin can read the log', async () => {
+  await as('strategy', `update requests set status='In Strategy' where id=$1`, [rq.id]);
+  const rows = await as('admin', `select action, summary from activity_log where action='request.status' order by id desc limit 1`);
+  expect(rows[0]?.summary.includes('New → In Strategy'), JSON.stringify(rows));
+  expect((await as('strategy', 'select * from activity_log')).length === 0, 'strategy can read log');
+});
+await check('nobody can write or erase the log directly', async () => {
+  await expectError(as('admin', `insert into activity_log (action, summary) values ('fake','x')`));
+  const del = await as('admin', 'delete from activity_log returning id').catch(() => []);
+  expect(del.length === 0, 'log rows deleted');
+  await expectError(as('admin', `select log_activity('fake','x','1','x')`));
+});
+
+console.log('\nInsights');
+await db.exec(`insert into social_posts (id, platform, external_id, posted_at, views, likes)
+  values ('instagram:1','instagram','1', now(), 500, 40)`);
+await check('insights visible only with the Insights section', async () => {
+  expect((await as('strategy', 'select * from social_posts')).length === 1, 'strategy cannot see');
+  expect((await as('staff', 'select * from social_posts')).length === 0, 'staff can see');
+});
+await check('media team can tag a pillar but not change numbers', async () => {
+  const ok = await as('strategy', `update social_posts set pillar='Play Here' where id='instagram:1' returning pillar`);
+  expect(ok[0]?.pillar === 'Play Here', 'could not tag');
+  await expectError(as('strategy', `update social_posts set views=999999 where id='instagram:1'`));
+});
+await check('Meta token is unreachable from the website', async () => {
+  await db.exec(`select store_social_token('SECRET-TOKEN')`);
+  await expectError(as('admin', 'select get_social_token()'));
+  await expectError(as('admin', 'select * from private.social_tokens'));
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

@@ -2,12 +2,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { useChats } from '../lib/chats';
 import { supabase } from '../lib/supabase';
 import type { MediaRequest } from '../lib/types';
 import RequestCard from '../components/RequestCard';
 
 export default function Home() {
   const { me, can } = useAuth();
+  const { chats, totalUnread } = useChats();
+  const mentions = chats.filter((c) => c.mentioned).length;
   const [mine, setMine] = useState<MediaRequest[]>([]);
   const [assigned, setAssigned] = useState<MediaRequest[]>([]);
 
@@ -34,6 +37,13 @@ export default function Home() {
 
       {can('section.requests') && (
         <Link to="/new" className="btn btn-primary w-full text-lg py-4">＋ New media request</Link>
+      )}
+
+      {totalUnread > 0 && (
+        <Link to="/chat" className="card flex items-center justify-between p-3 border-blue">
+          <span className="font-semibold">💬 {totalUnread} unread message{totalUnread === 1 ? '' : 's'}</span>
+          {mentions > 0 && <span className="text-xs font-bold text-white bg-red-600 rounded-full px-2 py-0.5">@ {mentions} mention{mentions === 1 ? '' : 's'}</span>}
+        </Link>
       )}
 
       {assigned.length > 0 && (

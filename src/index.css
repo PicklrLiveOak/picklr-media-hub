@@ -55,3 +55,10 @@ input[type="date"].input::-webkit-date-and-time-value { text-align: left; }
 .pb-tabbar { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
 .bottom-above-tabbar { bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
 @media (min-width: 768px) { .pb-tabbar { padding-bottom: 2.5rem; } .bottom-above-tabbar { bottom: 1rem; } }
+
+/* Printing the Insights report: plain white page, no app chrome */
+@media print {
+  html, body { background: white !important; }
+  .pb-tabbar { padding-bottom: 0 !important; }
+  @page { margin: 14mm; }
+}

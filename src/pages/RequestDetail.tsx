@@ -10,6 +10,20 @@ import { ACCEPT, prepareFile, signedUrl, uploadFile } from '../lib/upload';
 import type { MediaRequest, RequestFile } from '../lib/types';
 import { Avatar, ErrorNote, Field, StatusChip } from '../components/ui';
 import LinksEditor, { cleanLinks } from '../components/LinksEditor';
+import ChatThread from '../components/ChatThread';
+
+/** The request's comment thread (created the first time someone opens it). */
+function RequestComments({ requestId }: { requestId: string }) {
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    supabase.rpc('request_chat', { rid: requestId }).then(({ data, error }) =>
+      error ? setError(error.message) : setChatId(data as string));
+  }, [requestId]);
+  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  if (!chatId) return <p className="text-sm text-stone-500">Loading comments…</p>;
+  return <ChatThread chatId={chatId} allowInternal compact />;
+}
 
 export default function RequestDetail() {
   const { number } = useParams();
@@ -55,7 +69,7 @@ export default function RequestDetail() {
     setError(''); setBusy('Saving…');
     // Only send fields this person may change.
     const patch: Record<string, unknown> = {
-      title: draft!.title, type: draft!.type, department_id: draft!.department_id || null,
+      title: draft!.title, type: draft!.type, department_label: draft!.department_label?.trim() || null,
       event_name: draft!.event_name, event_date: draft!.event_date, needed_by: draft!.needed_by,
       details: draft!.details, drive_links: cleanLinks(draft!.drive_links),
     };
@@ -207,16 +221,15 @@ export default function RequestDetail() {
             <select className="input" {...input('type')}>{REQUEST_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
           </Field>
           <Field label="Department">
-            <select className="input" disabled={!canEdit} value={draft.department_id ?? ''}
-              onChange={(e) => setD({ department_id: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">—</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            <input className="input" list="dept-suggestions" maxLength={80} {...input('department_label')} />
+            <datalist id="dept-suggestions">
+              {departments.map((d) => <option key={d.id} value={d.name} />)}
+            </datalist>
           </Field>
           <Field label="Event / program"><input className="input" {...input('event_name')} /></Field>
           <Field label="Event date"><input className="input" type="date" {...input('event_date')} /></Field>
           <Field label="Needed by"><input className="input" type="date" {...input('needed_by')} /></Field>
-          <Field label="Requested by"><input className="input" disabled value={`${requester?.full_name ?? ''}${r.department_id ? ` (${deptName(r.department_id)})` : ''}`} /></Field>
+          <Field label="Requested by"><input className="input" disabled value={requester?.full_name ?? ''} /></Field>
         </div>
         <Field label="Details"><textarea className="input min-h-28" {...input('details')} /></Field>
         <div>
@@ -263,8 +276,9 @@ export default function RequestDetail() {
         )}
       </section>
 
-      <section className="card p-4 text-sm text-stone-500">
-        💬 Comments on this request arrive with Chat (step 2).
+      <section className="card p-4">
+        <h2 className="h-display text-lg mb-3">Comments</h2>
+        <RequestComments requestId={r.id} />
       </section>
 
       <ErrorNote error={error} />

@@ -433,3 +433,8 @@ enabled = true
 # and the function itself also checks the caller has team.manage.
 [functions.admin-users]
 verify_jwt = true
+
+# social-sync: the nightly cron call has no login, so Supabase's JWT check is
+# off; the function checks permissions itself for every other action.
+[functions.social-sync]
+verify_jwt = false
