@@ -190,7 +190,7 @@ export default function RequestDetail() {
       <section className="card p-4">
         <h2 className="h-display text-lg mb-2">Brief / Script</h2>
         {isManager ? (
-          <textarea className="input min-h-48 font-mono !text-sm" placeholder="Hook, shot list, script, caption ideas…"
+          <textarea className="input min-h-48 font-mono" placeholder="Hook, shot list, script, caption ideas…"
             value={draft.brief ?? ''} onChange={(e) => setD({ brief: e.target.value || null })} />
         ) : (
           <p className="whitespace-pre-wrap text-sm">{r.brief || <span className="text-stone-500">The media team hasn't written a brief yet.</span>}</p>
@@ -234,7 +234,7 @@ export default function RequestDetail() {
 
       {/* Save bar appears when something changed */}
       {dirty && (
-        <div className="sticky bottom-20 md:bottom-4 z-10 flex gap-2">
+        <div className="sticky bottom-above-tabbar z-10 flex gap-2">
           <button className="btn btn-primary flex-1" onClick={save} disabled={!!busy}>{busy || 'Save changes'}</button>
           <button className="btn btn-ghost" onClick={() => setDraft(r)}>Cancel</button>
         </div>

@@ -9,13 +9,16 @@ export default function LinksEditor({ links, onChange, disabled }: {
   return (
     <div className="space-y-2">
       {links.map((l, i) => (
-        <div key={i} className="flex gap-2">
-          <input className="input w-1/3" placeholder="Label" value={l.label} disabled={disabled}
-            onChange={(e) => set(i, { label: e.target.value })} />
-          <input className="input flex-1" placeholder="https://drive.google.com/…" type="url" value={l.url}
-            disabled={disabled} onChange={(e) => set(i, { url: e.target.value })} />
+        // Link on top, its label underneath — roomy enough to paste into on a phone.
+        <div key={i} className="flex gap-2 items-start">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <input className="input" placeholder="Paste Drive link (https://…)" type="url" inputMode="url" value={l.url}
+              disabled={disabled} onChange={(e) => set(i, { url: e.target.value })} />
+            <input className="input" placeholder="Label, e.g. Raw footage" value={l.label} disabled={disabled}
+              onChange={(e) => set(i, { label: e.target.value })} />
+          </div>
           {!disabled && (
-            <button type="button" className="btn btn-ghost px-3" aria-label="Remove link"
+            <button type="button" className="btn btn-ghost px-3 shrink-0" aria-label="Remove link"
               onClick={() => onChange(links.filter((_, j) => j !== i))}>✕</button>
           )}
         </div>

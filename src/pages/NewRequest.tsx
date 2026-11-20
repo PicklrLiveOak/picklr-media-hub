@@ -105,14 +105,18 @@ export default function NewRequest() {
 
       <div>
         <span className="label">Images or PDFs (max 10 MB each)</span>
-        <input type="file" accept={ACCEPT} multiple className="block text-sm"
-          onChange={(e) => setFiles([...files, ...Array.from(e.target.files ?? [])])} />
+        {/* Styled button instead of the browser's file box (which is too wide on small phones) */}
+        <label className="btn btn-ghost text-sm cursor-pointer">
+          📎 Add images / PDFs
+          <input type="file" accept={ACCEPT} multiple className="hidden"
+            onChange={(e) => { setFiles([...files, ...Array.from(e.target.files ?? [])]); e.target.value = ''; }} />
+        </label>
         {files.length > 0 && (
           <ul className="mt-2 text-sm space-y-1">
             {files.map((file, i) => (
-              <li key={i} className="flex justify-between gap-2">
-                <span className="truncate">{file.name}</span>
-                <button type="button" className="text-red-600" onClick={() => setFiles(files.filter((_, j) => j !== i))}>remove</button>
+              <li key={i} className="flex justify-between gap-2 min-w-0">
+                <span className="truncate min-w-0">{file.name}</span>
+                <button type="button" className="text-red-600 shrink-0" onClick={() => setFiles(files.filter((_, j) => j !== i))}>remove</button>
               </li>
             ))}
           </ul>

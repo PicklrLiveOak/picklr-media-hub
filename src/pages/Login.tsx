@@ -17,10 +17,11 @@ export default function Login({ note }: { note?: string }) {
   }
 
   return (
-    <div className="min-h-dvh bg-ink text-cream grid place-items-center px-6">
+    <div className="min-h-dvh bg-ink text-cream grid place-items-center px-6 pt-safe pb-safe">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4">
-        <img src="logo.svg" alt="" className="w-20 h-20 mx-auto" />
-        <h1 className="h-display text-4xl text-center">Picklr <span className="text-blue">Media Hub</span></h1>
+        <img src="picklr-mark.png" alt="" className="w-16 h-16 mx-auto" />
+        <img src="picklr-wordmark-white.png" alt="Picklr" className="h-9 w-auto mx-auto" />
+        <h1 className="h-display text-4xl text-center text-blue -mt-1">Media Hub</h1>
         <p className="text-center text-cream/70 text-sm">The Picklr Live Oak · Media Department</p>
         <input className="input text-ink" placeholder="Username" autoCapitalize="none" autoCorrect="off"
           autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required />

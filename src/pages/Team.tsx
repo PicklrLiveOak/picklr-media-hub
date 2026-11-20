@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { PERMISSIONS } from '../lib/constants';
 import type { Profile } from '../lib/types';
-import { Avatar, ErrorNote, Field, PageHeader, Toggle } from '../components/ui';
+import { Avatar, ErrorNote, Field, PageHeader, Toast, Toggle } from '../components/ui';
 
 // Calls the admin-users Edge Function (holds the service key server-side).
 async function adminCall(body: Record<string, unknown>) {
@@ -196,7 +196,7 @@ function EditPerson({ p, departments, onSaved }: { p: Profile; departments: { id
         </div>
       )}
       <ErrorNote error={error} />
-      {msg && <p className="text-sm text-emerald-700">{msg}</p>}
+      <Toast msg={msg} onDone={() => setMsg('')} />
     </div>
   );
 }

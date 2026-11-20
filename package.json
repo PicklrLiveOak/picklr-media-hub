@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:rls": "node tests/rls.test.mjs",
-    "icons": "pwa-assets-generator --preset minimal-2023 public/logo.svg"
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

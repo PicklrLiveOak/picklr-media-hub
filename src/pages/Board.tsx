@@ -52,7 +52,7 @@ export default function Board() {
   }
 
   const sel = (k: keyof typeof filter, label: string, options: [string, string][]) => (
-    <select className="input !py-1.5 !text-sm !w-auto" value={filter[k]}
+    <select className="input !py-1.5 !w-auto shrink-0" value={filter[k]}
       onChange={(e) => setFilter({ ...filter, [k]: e.target.value })} aria-label={label}>
       <option value="">{label}</option>
       {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -71,7 +71,7 @@ export default function Board() {
       } />
 
       <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4">
-        <input className="input !py-1.5 !text-sm !w-36 shrink-0" placeholder="Search…" value={filter.q}
+        <input className="input !py-1.5 !w-36 shrink-0" placeholder="Search…" value={filter.q}
           onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
         {sel('person', 'Anyone', team.filter((t) => t.active).map((t) => [t.id, t.full_name]))}
         {sel('pillar', 'All pillars', PILLARS.map((p) => [p, p]))}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { prepareFile, uploadFile } from '../lib/upload';
-import { Avatar, ErrorNote, Field, PageHeader } from '../components/ui';
+import { Avatar, ErrorNote, Field, PageHeader, Toast } from '../components/ui';
 
 export default function Me() {
   const { me, reload, deptName, presets } = useAuth();
@@ -77,7 +77,7 @@ export default function Me() {
       </section>
 
       <ErrorNote error={error} />
-      {msg && <p className="text-sm text-emerald-700">{msg}</p>}
+      <Toast msg={msg} onDone={() => setMsg('')} />
 
       <button className="btn btn-ghost w-full" onClick={() => supabase.auth.signOut()}>Sign out</button>
     </div>
