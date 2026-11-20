@@ -6,7 +6,7 @@ import type { MediaRequest } from '../lib/types';
 import { Avatar, StatusChip } from './ui';
 
 export default function RequestCard({ r, showStatus = true }: { r: MediaRequest; showStatus?: boolean }) {
-  const { person, deptName } = useAuth();
+  const { person, deptName, pillarColor } = useAuth();
   const overdue = isOverdue(r.needed_by, r.status);
   return (
     <Link to={`/r/${r.number}`} className="card block p-3 hover:border-blue">
@@ -27,7 +27,7 @@ export default function RequestCard({ r, showStatus = true }: { r: MediaRequest;
             </span>
           )}
           {r.priority !== 'Normal' && <span className={PRIORITY_STYLE[r.priority]}>{r.priority}</span>}
-          {r.pillar && <span className="truncate text-blue">{r.pillar}</span>}
+          {r.pillar && <span className="truncate font-semibold" style={{ color: pillarColor(r.pillar) }}>● {r.pillar}</span>}
         </div>
         <div className="flex -space-x-1.5">
           {(r.request_assignees ?? []).map((a) => <Avatar key={a.user_id} person={person(a.user_id)} size={22} />)}

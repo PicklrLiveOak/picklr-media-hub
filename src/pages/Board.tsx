@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { PILLARS, REQUEST_TYPES, STATUSES } from '../lib/constants';
+import { STATUSES } from '../lib/constants';
 import type { MediaRequest } from '../lib/types';
 import RequestCard from '../components/RequestCard';
 import { PageHeader } from '../components/ui';
@@ -13,7 +13,7 @@ type View = 'kanban' | 'list';
 const VIEW_KEY = 'board.view';
 
 export default function Board() {
-  const { team, departments, can } = useAuth();
+  const { team, departments, can, pillars, requestTypes } = useAuth();
   const [rows, setRows] = useState<MediaRequest[]>([]);
   const [view, setView] = useState<View>(() => (localStorage.getItem(VIEW_KEY) as View) || 'kanban');
   const [filter, setFilter] = useState({ pillar: '', person: '', type: '', dept: '', section: '', q: '' });
@@ -78,8 +78,8 @@ export default function Board() {
         <input className="input !py-1.5 !w-36 shrink-0" placeholder="Search…" value={filter.q}
           onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
         {sel('person', 'Anyone', team.filter((t) => t.active).map((t) => [t.id, t.full_name]))}
-        {sel('pillar', 'All pillars', PILLARS.map((p) => [p, p]))}
-        {sel('type', 'All types', REQUEST_TYPES.map((t) => [t, t]))}
+        {sel('pillar', 'All pillars', pillars.map((p) => [p.name, p.name]))}
+        {sel('type', 'All types', requestTypes.map((t) => [t.name, t.name]))}
         {sel('section', 'Both sections', [['Strategy', 'Strategy'], ['Execution', 'Execution']])}
         {sel('dept', 'All depts', departments.map((d) => [String(d.id), d.name]))}
       </div>

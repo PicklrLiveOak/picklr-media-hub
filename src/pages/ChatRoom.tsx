@@ -8,7 +8,7 @@ import ChatThread from '../components/ChatThread';
 import MemberPicker from '../components/MemberPicker';
 import { Avatar, ErrorNote } from '../components/ui';
 
-type ChatInfo = { id: string; kind: string; name: string | null; request_id: string | null; created_by: string | null };
+type ChatInfo = { id: string; kind: string; name: string | null; request_id: string | null; created_by: string | null; is_default: boolean };
 
 export default function ChatRoom() {
   const { id } = useParams();
@@ -22,7 +22,7 @@ export default function ChatRoom() {
   const [missing, setMissing] = useState(false);
 
   async function load() {
-    const { data } = await supabase.from('chats').select('id, kind, name, request_id, created_by').eq('id', id!).maybeSingle();
+    const { data } = await supabase.from('chats').select('id, kind, name, request_id, created_by, is_default').eq('id', id!).maybeSingle();
     if (!data) { setMissing(true); return; }
     setChat(data);
     const { data: m } = await supabase.from('chat_members').select('user_id').eq('chat_id', id!);
@@ -37,7 +37,7 @@ export default function ChatRoom() {
   if (missing) return <p>This chat doesn't exist or you're not in it.</p>;
   if (!chat || !me) return <p>Loading…</p>;
 
-  const canManage = chat.kind === 'group' &&
+  const canManage = chat.kind === 'group' && !chat.is_default &&
     (can('team.manage') || (can('chat.create_groups') && chat.created_by === me.id));
   const other = chat.kind === 'dm' ? person(members.find((m) => m !== me.id)) : undefined;
   const title = chat.kind === 'group' ? chat.name : chat.kind === 'dm' ? other?.full_name ?? 'Direct message' : `#${req?.number ?? ''} ${req?.title ?? ''}`;
@@ -49,7 +49,7 @@ export default function ChatRoom() {
         {other && <Avatar person={other} size={36} />}
         <div className="min-w-0 flex-1">
           <h1 className="h-display text-2xl truncate">{title}</h1>
-          {chat.kind === 'group' && <div className="text-xs text-stone-500">{members.length} member{members.length === 1 ? '' : 's'}</div>}
+          {chat.kind === 'group' && <div className="text-xs text-stone-500">{chat.is_default ? 'Everyone' : `${members.length} member${members.length === 1 ? '' : 's'}`}</div>}
           {chat.kind === 'request' && req && <Link to={`/r/${req.number}`} className="text-xs text-blue underline">Open request →</Link>}
         </div>
         {canManage && <button className="btn btn-ghost text-sm" onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Members'}</button>}

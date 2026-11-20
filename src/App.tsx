@@ -14,6 +14,9 @@ import ChatRoom from './pages/ChatRoom';
 import Insights from './pages/Insights';
 import InsightsReport from './pages/InsightsReport';
 import { ChatsProvider } from './lib/chats';
+import { NotificationsProvider } from './lib/notifications';
+import Calendar from './pages/Calendar';
+import Notifications from './pages/Notifications';
 import Me from './pages/Me';
 
 // Hides a page unless the person has the permission (the database also blocks the data).
@@ -30,6 +33,7 @@ function Shell() {
 
   return (
     <ChatsProvider>
+    <NotificationsProvider>
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
@@ -40,12 +44,15 @@ function Shell() {
         <Route path="chat/:id" element={<ChatRoom />} />
         <Route path="insights" element={<Gate perm="section.insights"><Insights /></Gate>} />
         <Route path="insights/report" element={<Gate perm="section.insights"><InsightsReport /></Gate>} />
+        <Route path="calendar" element={<Gate perm="section.calendar"><Calendar /></Gate>} />
+        <Route path="notifications" element={<Notifications />} />
         <Route path="admin" element={<Gate perm="team.manage"><Admin /></Gate>} />
         <Route path="team" element={<Navigate to="/admin?tab=people" replace />} />
         <Route path="me" element={<Me />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </NotificationsProvider>
     </ChatsProvider>
   );
 }

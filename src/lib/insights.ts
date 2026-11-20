@@ -2,7 +2,8 @@
 // Insights page and the report both show.
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { PILLARS, TIMEZONE } from './constants';
+import { TIMEZONE } from './constants';
+import { useAuth } from './auth';
 import type { SocialAccount, SocialDaily, SocialPost } from './types';
 
 export type RangeKey = '7d' | '30d' | '90d' | 'this-month' | 'last-month';
@@ -43,6 +44,7 @@ export function weekOf(ts: string) {
 }
 
 export function useInsights(range: RangeKey, platform: Platform) {
+  const { pillars } = useAuth();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [daily, setDaily] = useState<SocialDaily[]>([]);
@@ -96,7 +98,7 @@ export function useInsights(range: RangeKey, platform: Platform) {
     .filter((f) => accounts.some((a) => a.platform === f.platform) || f.series.length);
 
   // ---- By pillar ----
-  const byPillar = [...PILLARS, null].map((pillar) => {
+  const byPillar = [...pillars.map((x) => x.name), null].map((pillar) => {
     const ps = posts.filter((p) => p.pillar === pillar);
     const reach = sum(ps.map((p) => p.reach));
     const inter = sum(ps.map(interactionsOf));

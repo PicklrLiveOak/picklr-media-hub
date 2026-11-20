@@ -24,6 +24,7 @@ export default function ChatThread({ chatId, allowInternal = false, compact = fa
   const [error, setError] = useState('');
   const [caret, setCaret] = useState(0);
   const bottom = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const canInternal = allowInternal && can('requests.internal');
 
@@ -43,7 +44,12 @@ export default function ChatThread({ chatId, allowInternal = false, compact = fa
     return () => { supabase.removeChannel(ch); };
   }, [chatId, load]);
 
-  useEffect(() => { bottom.current?.scrollIntoView({ block: 'end' }); }, [messages.length]);
+  // Jump to the newest message. Embedded boxes (Home, request comments) scroll
+  // only inside themselves so the page doesn't jump down.
+  useEffect(() => {
+    if (compact) { if (list.current) list.current.scrollTop = list.current.scrollHeight; }
+    else bottom.current?.scrollIntoView({ block: 'end' });
+  }, [messages.length, compact]);
 
   // @mention autocomplete: look at the word right before the cursor.
   const mentionQuery = useMemo(() => {
@@ -102,7 +108,7 @@ export default function ChatThread({ chatId, allowInternal = false, compact = fa
     // Full-screen chat: messages fill the space and the composer stays pinned
     // above the tab bar. On a request page (compact) it's a scrolling box.
     <div className={`flex flex-col ${compact ? '' : 'min-h-[calc(100dvh-14rem)]'}`}>
-      <div className={`space-y-3 flex-1 ${compact ? 'max-h-[28rem] overflow-y-auto pr-1' : ''}`}>
+      <div ref={list} className={`space-y-3 flex-1 ${compact ? 'max-h-[28rem] overflow-y-auto pr-1' : ''}`}>
         {messages.length === 0 && <p className="text-sm text-stone-500 py-4 text-center">No messages yet — say hi 👋</p>}
         {messages.map((m, i) => {
           const mine = m.author_id === me?.id;

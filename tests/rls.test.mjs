@@ -312,5 +312,98 @@ await check('Meta token is unreachable from the website', async () => {
   await expectError(as('admin', 'select * from private.social_tokens'));
 });
 
+// ---------------------------------------------------------------------------
+console.log('\nGeneral chat');
+const [{ id: general }] = await db.query(`select id from chats where is_default`).then((r) => r.rows);
+await check('everyone is in General, including brand-new accounts', async () => {
+  const id = '00000000-0000-0000-0000-000000000099';
+  await db.query(`insert into auth.users values ($1, 'new@test')`, [id]);
+  await db.query(`insert into profiles (id, username, full_name, role, permissions)
+    select $1, 'newbie', 'Newbie', 'staff', permissions from role_presets where role='staff'`, [id]);
+  const missing = (await db.query(`select username from profiles p where active
+    and not exists (select 1 from chat_members m where m.chat_id=$1 and m.user_id=p.id)`, [general])).rows;
+  expect(missing.length === 0, `not in General: ${JSON.stringify(missing)}`);
+});
+await check('nobody can be removed from General or delete it', async () => {
+  await expectError(as('admin', 'select set_group_members($1, array[]::uuid[])', [general]));
+  const left = await as('staff', 'delete from chat_members where chat_id=$1 and user_id=$2 returning user_id', [general, U.staff]);
+  expect(left.length === 0, 'staff left General');
+  const del = await as('admin', 'delete from chats where id=$1 returning id', [general]);
+  expect(del.length === 0, 'General deleted');
+});
+await check('General is pinned first in the chat list', async () => {
+  const rows = await as('staff', 'select is_default from chat_list()');
+  expect(rows[0]?.is_default === true, JSON.stringify(rows.slice(0, 2)));
+});
+
+console.log('\nPillars & categories');
+await check('only the admin can add, rename or remove pillars/categories', async () => {
+  await expectError(as('strategy', `insert into pillars (name) values ('Hacked')`));
+  await as('admin', `insert into pillars (name, color) values ('Tournaments', '#123456')`);
+  await as('admin', `insert into request_types (name) values ('Podcast')`);
+  const [r] = await as('strategy', `insert into requests (title, type, pillar, requester_id) values ('Pod','Podcast','Tournaments',$1) returning id`, [U.strategy]);
+  await as('admin', `update pillars set name='Tournament Hype' where name='Tournaments'`);
+  const [after] = await as('strategy', 'select pillar from requests where id=$1', [r.id]);
+  expect(after.pillar === 'Tournament Hype', `rename did not cascade: ${after.pillar}`);
+});
+await check('requests can only use real categories', () =>
+  expectError(as('staff', `insert into requests (title, type) values ('x','Not a type')`)));
+
+console.log('\nStrategy → Execution workflow');
+const [wf] = await as('staff', `insert into requests (title, type) values ('Workflow test','Reel') returning id, number`);
+await check('a new request notifies the Strategy team', async () => {
+  const n = await as('strategy', `select * from notifications where kind='request.new' and link=$1`, [`/r/${wf.number}`]);
+  expect(n.length === 1, `strategy got ${n.length}`);
+  const e = await as('exec', `select * from notifications where kind='request.new'`).catch(() => []);
+  expect(e.length === 0, 'execution was notified too early');
+});
+await check('staff cannot approve; Strategy can', async () => {
+  await expectError(as('staff', 'select approve_request($1)', [wf.id]));
+  await as('strategy', 'select approve_request($1)', [wf.id]);
+  const [r] = await as('strategy', 'select status, section from requests where id=$1', [wf.id]);
+  expect(r.status === 'Ready for Execution' && r.section === 'Execution', JSON.stringify(r));
+});
+await check('approval notifies Execution and the requester', async () => {
+  const admin = await as('admin', `select * from notifications where kind='request.approved'`);
+  expect(admin.length === 1, `admin (execution) got ${admin.length}`);
+  const mine = await as('staff', `select * from notifications where kind='request.status'`);
+  expect(mine.some((n) => n.title.includes('Ready for Execution')), JSON.stringify(mine));
+});
+await check('approving twice is refused', () => expectError(as('strategy', 'select approve_request($1)', [wf.id])));
+await check('you only see your own notifications', async () => {
+  const theirs = await as('staff2', `select * from notifications where user_id <> $1`, [U.staff2]);
+  expect(theirs.length === 0, 'saw other people\'s notifications');
+});
+
+console.log('\nCalendar');
+const [shoot] = await as('admin', `insert into calendar_items (type, title, starts_at, request_id)
+  values ('Shoot', 'Film reel', now() + interval '1 day', $1) returning id`, [wf.id]);
+await as('admin', 'insert into calendar_assignees values ($1, $2)', [shoot.id, U.staff]);
+const [meet] = await as('admin', `insert into calendar_items (type, title, starts_at) values ('Meeting', 'Mgmt sync', now()) returning id`);
+await check('scheduling someone notifies them', async () => {
+  const n = await as('staff', `select * from notifications where kind='calendar.assigned'`);
+  expect(n.length === 1 && n[0].body.includes('Film reel'), JSON.stringify(n));
+});
+await check('"own calendar only" people see just their items', async () => {
+  const ids = (await as('staff', 'select id from calendar_items')).map((r) => r.id);
+  expect(ids.includes(shoot.id) && !ids.includes(meet.id), JSON.stringify(ids));
+});
+await check('"everyone\'s calendar" toggle shows the whole calendar', async () => {
+  await as('admin', `update profiles set permissions = permissions || '{calendar.view_all}' where id=$1`, [U.staff]);
+  const n = (await as('staff', 'select id from calendar_items')).length;
+  expect(n === 2, `saw ${n}`);
+  await as('admin', `update profiles set permissions = array_remove(permissions, 'calendar.view_all') where id=$1`, [U.staff]);
+});
+await check('only people with "edit calendar" can add or change items', async () => {
+  await expectError(as('staff', `insert into calendar_items (type, title, starts_at) values ('Shoot','x', now())`));
+  const upd = await as('staff', `update calendar_items set title='hacked' where id=$1 returning id`, [shoot.id]);
+  expect(upd.length === 0, 'staff edited an item');
+});
+await check('turning off the Calendar section hides it', async () => {
+  await as('admin', `update profiles set permissions = array_remove(permissions, 'section.calendar') where id=$1`, [U.staff]);
+  expect((await as('staff', 'select id from calendar_items')).length === 0, 'still visible');
+  await as('admin', `update profiles set permissions = permissions || '{section.calendar}' where id=$1`, [U.staff]);
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

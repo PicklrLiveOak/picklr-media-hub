@@ -68,7 +68,7 @@ function ChatListItem({ c }: { c: ChatRow }) {
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className={`truncate ${c.unread ? 'font-bold' : 'font-semibold'}`}>{title}</span>
+            <span className={`truncate ${c.unread ? 'font-bold' : 'font-semibold'}`}>{c.is_default ? '📌 ' : ''}{title}</span>
             <span className="text-[11px] text-stone-500 shrink-0">{fmtDateTime(c.last_message_at)}</span>
           </div>
           <div className="flex items-center justify-between gap-2">

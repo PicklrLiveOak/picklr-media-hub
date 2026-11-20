@@ -161,3 +161,20 @@ The token is stored in a locked part of the database that the website can't read
 - Daily account reach and views for both.
 
 **Report:** go to **Insights → 📄 Report**, pick a date range, then **Print / Save as PDF** or **Copy summary**.
+
+---
+
+## Step 3: workflow, calendar, General chat, setup
+
+### How a request flows
+1. **Someone submits a request.** Everyone with the **Strategy team** toggle gets a notification, and it shows in their **Strategy queue** on Home.
+2. **Strategy edits the details**, writes the brief/script, attaches files or Drive links, then taps **✓ Approve → Execution**.
+3. **The Execution team** (you) gets notified and sees it under **Ready to produce** on Home. On the request, tap **📅 Schedule** to book the shoot and choose who's filming with you. Each person you add is notified.
+4. The requester is notified at every status change.
+
+### What to try
+- **Calendar tab**: month, week and agenda views, filterable by type and person. It shows shoots, posts, meetings and events, plus every request's **due date**, **submitted date** and **event date**.
+- **Admin → Access**: one grid for who can open **Insights**, who sees **everyone's calendar** vs only their own, who's on the **Strategy** and **Execution** teams, and Board/Chat access.
+- **Admin → Setup**: add, rename, recolor, reorder or remove **content pillars** and **request categories**. Removing hides an item from pickers; old items keep their label. Use **Show removed → Restore** to bring one back.
+- **Chat → 📌 General**: everyone is in it automatically, including people you add later. Create other groups the same way as before.
+- **🔔 Notifications** (top right): new requests, approvals, status changes, schedule invites and @mentions.

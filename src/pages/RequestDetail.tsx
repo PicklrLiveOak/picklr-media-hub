@@ -4,13 +4,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { PILLARS, PRIORITIES, REQUEST_TYPES, SECTIONS, STATUSES } from '../lib/constants';
+import { PRIORITIES, SECTIONS, STATUSES } from '../lib/constants';
 import { fmtDate, fmtDateTime } from '../lib/format';
 import { ACCEPT, prepareFile, signedUrl, uploadFile } from '../lib/upload';
 import type { MediaRequest, RequestFile } from '../lib/types';
 import { Avatar, ErrorNote, Field, StatusChip } from '../components/ui';
 import LinksEditor, { cleanLinks } from '../components/LinksEditor';
 import ChatThread from '../components/ChatThread';
+import CalendarItemForm from '../components/CalendarItemForm';
+import type { CalendarItem } from '../lib/types';
+import { CALENDAR_STYLE } from '../lib/constants';
 
 /** The request's comment thread (created the first time someone opens it). */
 function RequestComments({ requestId }: { requestId: string }) {
@@ -27,7 +30,7 @@ function RequestComments({ requestId }: { requestId: string }) {
 
 export default function RequestDetail() {
   const { number } = useParams();
-  const { me, can, team, departments, person, deptName } = useAuth();
+  const { me, can, team, departments, person, deptName, pillars, requestTypes } = useAuth();
   const nav = useNavigate();
   const [r, setR] = useState<MediaRequest | null>(null);
   const [draft, setDraft] = useState<MediaRequest | null>(null); // unsaved edits
@@ -35,6 +38,8 @@ export default function RequestDetail() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
   const [notFound, setNotFound] = useState(false);
+  const [events, setEvents] = useState<CalendarItem[]>([]);
+  const [scheduling, setScheduling] = useState<CalendarItem | 'new' | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('requests').select('*, request_assignees(user_id)')
@@ -43,6 +48,9 @@ export default function RequestDetail() {
     setR(data as MediaRequest); setDraft(data as MediaRequest);
     const { data: f } = await supabase.from('request_files').select('*').eq('request_id', data.id).order('created_at');
     setFiles((f as RequestFile[]) ?? []);
+    const { data: ev } = await supabase.from('calendar_items').select('*, calendar_assignees(user_id)')
+      .eq('request_id', data.id).order('starts_at');
+    setEvents((ev as CalendarItem[]) ?? []);
   }, [number]);
 
   useEffect(() => { load(); }, [load]);
@@ -131,6 +139,17 @@ export default function RequestDetail() {
   }
 
   const requester = person(r.requester_id);
+  const inStrategy = ['New', 'In Strategy', 'On Hold'].includes(r.status);
+  const canApprove = inStrategy && (can('team.strategy') || me.role === 'admin');
+  const canSchedule = can('calendar.edit');
+
+  async function approve() {
+    if (!r!.brief && !confirm('There is no brief/script yet. Approve anyway?')) return;
+    setError(''); setBusy('Approving…');
+    const { error } = await supabase.rpc('approve_request', { rid: r!.id });
+    setBusy('');
+    if (error) setError(error.message); else load();
+  }
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -147,6 +166,46 @@ export default function RequestDetail() {
           {r.needed_by && <span>Due {fmtDate(r.needed_by)}</span>}
         </div>
       </div>
+
+      {/* Strategy → Execution pipeline */}
+      <WorkflowSteps status={r.status} />
+      {(canApprove || canSchedule) && (
+        <section className="card p-4 space-y-3 border-blue">
+          {canApprove && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm">
+                <b>Strategy:</b> edit details, write the brief/script and attach files, then send it to Execution.
+              </div>
+              <button className="btn btn-primary" disabled={!!busy} onClick={approve}>✓ Approve → Execution</button>
+            </div>
+          )}
+          {canSchedule && !inStrategy && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm"><b>Execution:</b> schedule the shoot and the people filming with you.</div>
+              <button className="btn btn-dark" onClick={() => setScheduling('new')}>📅 Schedule</button>
+            </div>
+          )}
+          {events.length > 0 && (
+            <ul className="space-y-1.5">
+              {events.map((e) => (
+                <li key={e.id} className="flex items-center gap-2 text-sm">
+                  <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${CALENDAR_STYLE[e.type] ?? ''}`}>{e.type}</span>
+                  <span className="flex-1 min-w-0 truncate">{e.title} · {fmtDateTime(e.starts_at)}</span>
+                  <span className="flex -space-x-1.5">{(e.calendar_assignees ?? []).map((a) => <Avatar key={a.user_id} person={person(a.user_id)} size={20} />)}</span>
+                  {canSchedule && <button className="text-blue underline text-xs" onClick={() => setScheduling(e)}>edit</button>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {scheduling && (
+            <CalendarItemForm
+              initial={scheduling === 'new'
+                ? { type: 'Shoot', title: `Film: ${r.title}`, request_id: r.id, date: r.event_date ?? r.needed_by ?? undefined }
+                : scheduling}
+              onDone={(changed) => { setScheduling(null); if (changed) load(); }} />
+          )}
+        </section>
+      )}
 
       {/* Workflow — media team only */}
       {isManager && (
@@ -166,7 +225,7 @@ export default function RequestDetail() {
             <Field label="Pillar">
               <select className="input" value={draft.pillar ?? ''} onChange={(e) => setD({ pillar: e.target.value || null })}>
                 <option value="">—</option>
-                {PILLARS.map((p) => <option key={p}>{p}</option>)}
+                {pillars.filter((p) => p.active || p.name === draft.pillar).map((p) => <option key={p.name}>{p.name}</option>)}
               </select>
             </Field>
             <Field label="Priority">
@@ -218,7 +277,7 @@ export default function RequestDetail() {
         <Field label="Title"><input className="input" {...input('title')} /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Type">
-            <select className="input" {...input('type')}>{REQUEST_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
+            <select className="input" {...input('type')}>{requestTypes.filter((t) => t.active || t.name === draft.type).map((t) => <option key={t.name}>{t.name}</option>)}</select>
           </Field>
           <Field label="Department">
             <input className="input" list="dept-suggestions" maxLength={80} {...input('department_label')} />
@@ -288,5 +347,30 @@ export default function RequestDetail() {
         <button className="text-sm text-red-600 underline" onClick={deleteRequest}>Delete request (admin)</button>
       )}
     </div>
+  );
+}
+
+// Where this request is in the pipeline
+const STEPS = [
+  { label: 'Submitted', statuses: ['New'] },
+  { label: 'Strategy', statuses: ['In Strategy'] },
+  { label: 'Execution', statuses: ['Ready for Execution', 'In Production'] },
+  { label: 'Scheduled', statuses: ['Scheduled'] },
+  { label: 'Posted', statuses: ['Posted'] },
+];
+function WorkflowSteps({ status }: { status: string }) {
+  if (status === 'On Hold') return <p className="text-sm font-semibold text-stone-600">⏸ On hold</p>;
+  const at = STEPS.findIndex((s) => s.statuses.includes(status));
+  return (
+    <ol className="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-[11px] font-semibold">
+      {STEPS.map((s, i) => (
+        <li key={s.label} className="flex items-center gap-1">
+          <span className={`rounded-full px-2 py-1 whitespace-nowrap ${i < at ? 'bg-emerald-100 text-emerald-800' : i === at ? 'bg-blue text-white' : 'bg-white border border-line text-stone-400'}`}>
+            {i < at ? '✓ ' : ''}{s.label}
+          </span>
+          {i < STEPS.length - 1 && <span className="text-stone-300">›</span>}
+        </li>
+      ))}
+    </ol>
   );
 }

@@ -3,14 +3,13 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { REQUEST_TYPES } from '../lib/constants';
 import { ACCEPT, prepareFile, uploadFile } from '../lib/upload';
 import type { DriveLink } from '../lib/types';
 import { ErrorNote, Field, PageHeader } from '../components/ui';
 import LinksEditor, { cleanLinks } from '../components/LinksEditor';
 
 export default function NewRequest() {
-  const { me, team, departments, can, deptName } = useAuth();
+  const { me, team, departments, can, deptName, requestTypes } = useAuth();
   const nav = useNavigate();
   const [f, setF] = useState({
     title: '', requester_id: me!.id, department_label: deptName(me!.department_id), type: 'Graphic',
@@ -67,7 +66,7 @@ export default function NewRequest() {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Type *">
           <select className="input" value={f.type} onChange={set('type')}>
-            {REQUEST_TYPES.map((t) => <option key={t}>{t}</option>)}
+            {requestTypes.filter((t) => t.active).map((t) => <option key={t.name}>{t.name}</option>)}
           </select>
         </Field>
         <Field label="Department">

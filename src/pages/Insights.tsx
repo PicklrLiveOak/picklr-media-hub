@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
-import { PILLARS } from '../lib/constants';
 import { fmtDateTime } from '../lib/format';
 import { RANGES, TARGET, fmtN, fmtPct, interactionsOf, useInsights, type Platform, type RangeKey } from '../lib/insights';
 import type { SocialAccount, SocialPost } from '../lib/types';
@@ -152,7 +151,7 @@ function Tile({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 function PostRow({ p, onTagged }: { p: SocialPost; onTagged: () => void }) {
-  const { can } = useAuth();
+  const { can, pillars } = useAuth();
   const canTag = can('insights.manage') || can('requests.manage');
   async function tag(pillar: string) {
     await supabase.from('social_posts').update({ pillar: pillar || null }).eq('id', p.id);
@@ -176,9 +175,9 @@ function PostRow({ p, onTagged }: { p: SocialPost; onTagged: () => void }) {
           {stats.filter(([, v]) => v != null).map(([k, v]) => <span key={k}><b>{fmtN(v)}</b> {k.toLowerCase()}</span>)}
         </div>
         {canTag ? (
-          <select className="input !py-1 !w-auto mt-1.5 !text-base" value={p.pillar ?? ''} onChange={(e) => tag(e.target.value)} aria-label="Pillar">
+          <select className="input !py-1 !w-auto max-w-full mt-1.5 !text-base" value={p.pillar ?? ''} onChange={(e) => tag(e.target.value)} aria-label="Pillar">
             <option value="">Tag pillar…</option>
-            {PILLARS.map((x) => <option key={x}>{x}</option>)}
+            {pillars.filter((x) => x.active || x.name === p.pillar).map((x) => <option key={x.name}>{x.name}</option>)}
           </select>
         ) : p.pillar && <div className="text-xs text-blue mt-1">{p.pillar}</div>}
       </div>
@@ -222,7 +221,7 @@ function Connection({ accounts, onChange }: { accounts: SocialAccount[]; onChang
 
   return (
     <section className="card p-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="h-display text-lg">Meta connection</h2>
           {accounts.length ? accounts.map((a) => (
@@ -244,7 +243,7 @@ function Connection({ accounts, onChange }: { accounts: SocialAccount[]; onChang
             </div>
           )}
         </div>
-        <div className="flex flex-wrap justify-end gap-2 shrink-0">
+        <div className="flex flex-wrap sm:justify-end gap-2 sm:shrink-0">
           {accounts.length > 0 && <button className="btn btn-primary text-sm" disabled={!!busy} onClick={() => run('sync', { action: 'sync' })}>{busy === 'sync' ? 'Syncing…' : 'Sync now'}</button>}
           {accounts.length > 0 && <button className="btn btn-ghost text-sm" disabled={!!busy} onClick={() => run('check', { action: 'check' })}>{busy === 'check' ? 'Checking…' : 'Check token'}</button>}
           <button className="btn btn-ghost text-sm" onClick={() => setOpen(!open)}>{open ? 'Close' : accounts.length ? 'Settings' : 'Connect'}</button>

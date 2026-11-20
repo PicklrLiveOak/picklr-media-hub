@@ -7,11 +7,13 @@ import { STATUSES } from '../lib/constants';
 import { fmtDateTime, todayISO } from '../lib/format';
 import type { Activity, SocialAccount } from '../lib/types';
 import Team from './Team';
+import AdminAccess from './AdminAccess';
+import AdminSetup from './AdminSetup';
 import { GroupSettings } from './ChatRoom';
 import { NewGroup } from './Chats';
 import { Avatar, PageHeader, StatusChip, TokenWarning } from '../components/ui';
 
-const TABS = ['overview', 'people', 'chats', 'activity'] as const;
+const TABS = ['overview', 'people', 'access', 'setup', 'chats', 'activity'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Admin() {
@@ -31,6 +33,8 @@ export default function Admin() {
       </div>
       {tab === 'overview' && <Overview />}
       {tab === 'people' && <Team />}
+      {tab === 'access' && <AdminAccess />}
+      {tab === 'setup' && <AdminSetup />}
       {tab === 'chats' && <GroupChats />}
       {tab === 'activity' && <ActivityLog />}
     </div>
@@ -135,7 +139,7 @@ function Stat({ label, value, to, tone }: { label: string; value: number; to: st
 }
 
 // ---------------------------------------------------------------------------
-type GroupRow = { id: string; name: string | null; created_at: string; members: string[] };
+type GroupRow = { id: string; name: string | null; created_at: string; members: string[]; is_default: boolean };
 
 function GroupChats() {
   const [groups, setGroups] = useState<GroupRow[]>([]);
@@ -144,9 +148,9 @@ function GroupChats() {
   const { person } = useAuth();
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from('chats').select('id, name, created_at, chat_members(user_id)')
-      .eq('kind', 'group').order('name');
-    setGroups((data ?? []).map((g: { id: string; name: string | null; created_at: string; chat_members: { user_id: string }[] }) =>
+    const { data } = await supabase.from('chats').select('id, name, created_at, is_default, chat_members(user_id)')
+      .eq('kind', 'group').order('is_default', { ascending: false }).order('name');
+    setGroups((data ?? []).map((g: { id: string; name: string | null; created_at: string; is_default: boolean; chat_members: { user_id: string }[] }) =>
       ({ ...g, members: g.chat_members.map((m) => m.user_id) })));
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -169,7 +173,7 @@ function GroupChats() {
           <button className="w-full flex items-center gap-3 p-3 text-left" onClick={() => setOpen(open === g.id ? null : g.id)}>
             <span className="grid place-items-center h-10 w-10 rounded-full bg-blue text-white text-lg shrink-0">#</span>
             <div className="min-w-0 flex-1">
-              <div className="font-semibold truncate">{g.name}</div>
+              <div className="font-semibold truncate">{g.name}{g.is_default && <span className="ml-2 text-[10px] font-bold uppercase bg-cream border border-line rounded-full px-2 py-0.5">Everyone</span>}</div>
               <div className="flex -space-x-1.5 mt-1">
                 {g.members.slice(0, 10).map((m) => <Avatar key={m} person={person(m)} size={20} />)}
                 {g.members.length === 0 && <span className="text-xs text-amber-700">No members yet — tap to add people</span>}
@@ -178,7 +182,13 @@ function GroupChats() {
             </div>
             <span className="text-stone-400">{open === g.id ? '▴' : '▾'}</span>
           </button>
-          {open === g.id && (
+          {open === g.id && g.is_default && (
+            <div className="border-t border-line p-3 text-sm text-stone-600">
+              Everyone is in General automatically, including new accounts the moment you create them.
+              <div className="mt-2"><Link to={`/chat/${g.id}`} className="text-blue underline">Open chat →</Link></div>
+            </div>
+          )}
+          {open === g.id && !g.is_default && (
             <div className="border-t border-line p-3">
               <GroupSettings chat={g} members={g.members} onSaved={load} />
               <div className="flex justify-between">
@@ -213,10 +223,10 @@ function ActivityLog() {
   return (
     <div className="max-w-3xl space-y-3">
       <div className="flex gap-2 flex-wrap">
-        <select className="input !w-auto" value={kind} onChange={(e) => setKind(e.target.value)}>
+        <select className="input !w-auto max-w-full min-w-0" value={kind} onChange={(e) => setKind(e.target.value)}>
           {FILTERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <select className="input !w-auto" value={who} onChange={(e) => setWho(e.target.value)}>
+        <select className="input !w-auto max-w-full min-w-0" value={who} onChange={(e) => setWho(e.target.value)}>
           <option value="">Anyone</option>
           {team.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
         </select>
@@ -238,7 +248,7 @@ function ActivityList({ rows }: { rows: Activity[] }) {
         return (
           <li key={a.id} className="py-2 flex gap-3">
             <Avatar person={actor} size={28} />
-            <div className="min-w-0 flex-1 text-sm">
+            <div className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">
               <div><b>{actor?.full_name ?? (a.source === 'system' ? 'System' : a.source === 'mcp' ? 'Claude' : 'Someone')}</b> · {a.summary}</div>
               {details?.added?.length ? <div className="text-xs text-emerald-700">+ {details.added.join(', ')}</div> : null}
               {details?.removed?.length ? <div className="text-xs text-red-600">− {details.removed.join(', ')}</div> : null}

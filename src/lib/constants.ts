@@ -1,15 +1,11 @@
 // Fixed lists used across the app. Keep these in sync with the CHECK
 // constraints in supabase/migrations/*_core.sql.
 
-export const REQUEST_TYPES = ['Video', 'Reel', 'Graphic', 'Story', 'Livestream', 'Ad', 'Photo', 'Other'] as const;
-
 export const STATUSES = [
   'New', 'In Strategy', 'Ready for Execution', 'In Production', 'Scheduled', 'Posted', 'On Hold',
 ] as const;
 
-export const PILLARS = [
-  'People of The Picklr', 'Event Hype + Recap', 'Play Here', 'Gear + Tips', 'Offers + Bookings',
-] as const;
+// Pillars and request categories are editable: see Admin → Setup (tables pillars / request_types).
 
 export const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'] as const;
 export const SECTIONS = ['Strategy', 'Execution'] as const;
@@ -43,10 +39,27 @@ export const PERMISSIONS: { group: string; key: string; label: string }[] = [
   { group: 'Requests', key: 'requests.view_all', label: 'See every request' },
   { group: 'Requests', key: 'requests.manage', label: 'Manage requests (status, assignees, brief, tags)' },
   { group: 'Requests', key: 'requests.internal', label: 'See internal media-team comments' },
-  { group: 'Other', key: 'calendar.edit', label: 'Create & edit calendar items' },
+  { group: 'Workflow', key: 'team.strategy', label: 'Strategy team (gets new requests, approves to Execution)' },
+  { group: 'Workflow', key: 'team.execution', label: 'Execution team (gets approved requests, schedules shoots)' },
+  { group: 'Calendar', key: 'calendar.view_all', label: "See everyone's calendar (off = only their own)" },
+  { group: 'Calendar', key: 'calendar.edit', label: 'Create & edit calendar items' },
   { group: 'Other', key: 'chat.create_groups', label: 'Create group chats' },
   { group: 'Other', key: 'insights.manage', label: 'Upload insights / connect Instagram' },
   { group: 'Other', key: 'team.manage', label: 'Manage team & see audit log (admin)' },
 ];
 
 export const TIMEZONE = 'America/Chicago'; // San Antonio
+
+export const CALENDAR_TYPES = ['Shoot', 'Club Event', 'Post', 'Livestream', 'Meeting', 'Deadline'] as const;
+export const CALENDAR_STYLE: Record<string, string> = {
+  Shoot: 'bg-blue text-white', 'Club Event': 'bg-emerald-600 text-white', Post: 'bg-violet-600 text-white',
+  Livestream: 'bg-red-600 text-white', Meeting: 'bg-stone-700 text-white', Deadline: 'bg-amber-500 text-ink',
+  Due: 'bg-amber-100 text-amber-900 border border-amber-300', Submitted: 'bg-stone-100 text-stone-700 border border-line',
+  Event: 'bg-emerald-50 text-emerald-900 border border-emerald-300',
+};
+export const POST_STATUSES = ['Draft', 'Ready', 'Scheduled', 'Posted'] as const;
+// Solid dot colors for the month grid on phones (the chip styles above are too pale for dots)
+export const CALENDAR_DOT: Record<string, string> = {
+  Shoot: 'bg-blue', 'Club Event': 'bg-emerald-600', Post: 'bg-violet-600', Livestream: 'bg-red-600',
+  Meeting: 'bg-stone-700', Deadline: 'bg-amber-500', Due: 'bg-amber-500', Submitted: 'bg-stone-400', Event: 'bg-emerald-500',
+};

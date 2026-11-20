@@ -69,6 +69,7 @@ export type ChatRow = {
   mentioned: boolean;
   other_user: string | null;
   member_count: number;
+  is_default: boolean;
 };
 
 export type Message = {
@@ -118,3 +119,18 @@ export type SocialPost = {
   views: number | null; reach: number | null; likes: number | null; comments: number | null; shares: number | null;
   saves: number | null; reposts: number | null; interactions: number | null; pillar: string | null; request_id: string | null;
 };
+
+// ---- Setup lists (editable on Admin → Setup) ----
+export type Pillar = { name: string; color: string; sort: number; active: boolean };
+export type RequestType = { name: string; sort: number; active: boolean };
+
+// ---- Calendar ----
+export type CalendarItem = {
+  id: string; type: string; title: string; starts_at: string; ends_at: string | null; all_day: boolean;
+  location: string | null; notes: string | null; request_id: string | null; platform: string | null;
+  caption_draft: string | null; post_status: string | null; created_by: string | null;
+  calendar_assignees?: { user_id: string }[];
+};
+
+// ---- Notifications ----
+export type Notice = { id: number; user_id: string; kind: string; title: string; body: string | null; link: string | null; read_at: string | null; created_at: string };
