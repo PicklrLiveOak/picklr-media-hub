@@ -1,7 +1,7 @@
 // Shapes of rows coming back from Supabase.
 
 export type Department = { id: number; name: string; sort: number };
-export type RolePreset = { role: string; label: string; permissions: string[] };
+export type RolePreset = { role: string; label: string; permissions: string[]; sort: number };
 
 export type Profile = {
   id: string;
@@ -134,3 +134,9 @@ export type CalendarItem = {
 
 // ---- Notifications ----
 export type Notice = { id: number; user_id: string; kind: string; title: string; body: string | null; link: string | null; read_at: string | null; created_at: string };
+
+export type GoalKind = 'reel' | 'graphic' | 'carousel' | 'story' | 'any';
+export type ContentGoal = {
+  id: string; name: string; kind: GoalKind; platform: 'instagram' | 'facebook' | 'all';
+  target: number; period: 'week' | 'month'; sort: number; active: boolean;
+};

@@ -4,7 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { Department, Pillar, Profile, RequestType, RolePreset } from './types';
+import type { ContentGoal, Department, Pillar, Profile, RequestType, RolePreset } from './types';
 
 type AuthCtx = {
   session: Session | null;
@@ -15,6 +15,7 @@ type AuthCtx = {
   presets: RolePreset[];
   pillars: Pillar[];          // all, including removed (for labels); filter .active for pickers
   requestTypes: RequestType[];
+  goals: ContentGoal[];       // posting goals (Admin → Setup)
   pillarColor: (name: string | null | undefined) => string;
   can: (permission: string) => boolean;
   person: (id: string | null | undefined) => Profile | undefined;
@@ -33,15 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [presets, setPresets] = useState<RolePreset[]>([]);
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [requestTypes, setRequestTypes] = useState<RequestType[]>([]);
+  const [goals, setGoals] = useState<ContentGoal[]>([]);
 
   const reload = useCallback(async () => {
-    const [p, d, r, pl, rt] = await Promise.all([
+    const [p, d, r, pl, rt, g] = await Promise.all([
       supabase.from('profiles').select('*').order('full_name'),
       supabase.from('departments').select('*').order('sort'),
-      supabase.from('role_presets').select('*'),
+      supabase.from('role_presets').select('*').order('sort'),
       supabase.from('pillars').select('*').order('sort'),
       supabase.from('request_types').select('*').order('sort'),
+      supabase.from('content_goals').select('*').order('sort'),
     ]);
+    setGoals((g.data as ContentGoal[]) ?? []);
     setPillars((pl.data as Pillar[]) ?? []);
     setRequestTypes((rt.data as RequestType[]) ?? []);
     setTeam((p.data as Profile[]) ?? []);
@@ -73,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deptName = (id: number | null | undefined) => departments.find((d) => d.id === id)?.name ?? '';
 
   return (
-    <Ctx.Provider value={{ session, loading, me, team, departments, presets, pillars, requestTypes, pillarColor, can, person, deptName, reload }}>
+    <Ctx.Provider value={{ session, loading, me, team, departments, presets, pillars, requestTypes, goals, pillarColor, can, person, deptName, reload }}>
       {children}
     </Ctx.Provider>
   );

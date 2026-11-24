@@ -2,7 +2,8 @@
 // copy the text summary into an email / Slack.
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { fmtN, fmtPct, interactionsOf, TARGET, useInsights, type Platform, type RangeKey } from '../lib/insights';
+import { fmtN, fmtPct, interactionsOf, useInsights, type Platform, type RangeKey } from '../lib/insights';
+import GoalProgress from '../components/GoalProgress';
 
 export default function InsightsReport() {
   const [params] = useSearchParams();
@@ -11,7 +12,15 @@ export default function InsightsReport() {
   const d = useInsights(range, platform);
   const [copied, setCopied] = useState(false);
 
-  const weeksMet = d.cadence.filter((w) => w.met).length;
+  const goalLines = d.goalTables.flatMap((t) => {
+    const done = t.rows.filter((r) => !r.current);
+    const met = done.filter((r) => r.met).length;
+    const cur = t.rows.find((r) => r.current);
+    return [
+      done.length ? `${t.period === 'week' ? 'Weekly' : 'Monthly'} posting goals (${t.goals.map((g) => `${g.target} ${g.name}`).join(', ')}) met ${met} of ${done.length} ${t.period}s` : null,
+      cur ? `This ${t.period} so far: ${t.goals.map((g) => `${cur.counts[g.id] ?? 0}/${g.target} ${g.name}`).join(', ')}` : null,
+    ];
+  });
   const bestPillar = [...d.byPillar].filter((p) => p.pillar !== 'Untagged').sort((a, b) => b.avgViews - a.avgViews)[0];
   const best = d.top[0];
   const platformLabel = platform === 'all' ? 'Instagram + Facebook' : platform === 'instagram' ? 'Instagram' : 'Facebook';
@@ -23,7 +32,7 @@ export default function InsightsReport() {
     `${fmtN(d.totals.interactions)} interactions — ${fmtPct(d.engagementRate)} engagement rate`,
     best ? `Top post: "${(best.caption ?? '').slice(0, 60)}${(best.caption ?? '').length > 60 ? '…' : ''}" — ${fmtN(best.views)} views` : null,
     bestPillar ? `Best pillar: ${bestPillar.pillar} (${fmtN(bestPillar.avgViews)} avg views)` : null,
-    d.cadence.length ? `Posting target (${TARGET.reels} Reels + ${TARGET.graphics} graphics/week) met ${weeksMet} of ${d.cadence.length} weeks` : null,
+    ...goalLines,
   ].filter(Boolean) as string[];
 
   const text = `The Picklr Live Oak — Social Report (${platformLabel})\n${dateSpan}\n\n` + highlights.map((h) => `• ${h}`).join('\n');
@@ -102,19 +111,8 @@ export default function InsightsReport() {
       )}
 
       <section>
-        <h2 className="h-display text-xl mb-2">Posting vs target</h2>
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-stone-500"><th className="py-1">Week of</th><th className="text-right">Reels</th><th className="text-right">Graphics</th><th className="text-right">Target</th></tr></thead>
-          <tbody>
-            {d.cadence.map((w) => (
-              <tr key={w.week} className="border-t border-line">
-                <td className="py-1">{new Date(`${w.week}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                <td className="text-right">{w.reels}/{TARGET.reels}</td><td className="text-right">{w.graphics}/{TARGET.graphics}</td>
-                <td className="text-right">{w.met ? 'Met' : 'Short'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className="h-display text-xl mb-2">Posting goals</h2>
+        <GoalProgress tables={d.goalTables} print />
       </section>
 
       <p className="text-[11px] text-stone-500">Generated {new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' })} by Picklr Media Hub. Post numbers are lifetime totals as of the last sync.</p>

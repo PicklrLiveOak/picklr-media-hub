@@ -5,7 +5,7 @@
 //        Graph API Explorer; we swap it for a never-expiring Page token and store
 //        it server-side. If several Pages come back, we return them to choose from.
 //   { action: "sync" }       "Sync now" button (needs insights.manage)
-//   { action: "cron" }       nightly run from pg_cron (no login; throttled)
+//   { action: "cron" }       every-6-hours run from pg_cron (no login; throttled)
 //   { action: "disconnect" } forget the token (needs insights.manage)
 //
 // Secrets (Supabase → Edge Functions → Secrets): META_APP_ID, META_APP_SECRET
@@ -105,6 +105,24 @@ async function syncInstagram(db: SupabaseClient, token: string, igId: string) {
       interactions: nz(ins.total_interactions), synced_at: new Date().toISOString(),
     });
   });
+  // Stories: Meta only lists stories while they're live (24 hours), so the
+  // cron runs every few hours to catch each one. Once saved, they stay.
+  try {
+    const stories = await graph(`${igId}/stories`, token, {
+      fields: 'id,caption,media_type,permalink,thumbnail_url,media_url,timestamp',
+    });
+    await pool(stories.data ?? [], 5, async (m: Json) => {
+      const ins = await insights(m.id, token, ['views', 'reach', 'shares', 'replies', 'total_interactions']);
+      rows.push({
+        id: `instagram:${m.id}`, platform: 'instagram', external_id: m.id, posted_at: m.timestamp,
+        media_type: 'STORY', caption: m.caption ?? null, permalink: m.permalink ?? null,
+        thumbnail_url: m.thumbnail_url ?? (m.media_type === 'VIDEO' ? null : m.media_url) ?? null,
+        views: nz(ins.views), reach: nz(ins.reach), shares: nz(ins.shares), comments: nz(ins.replies),
+        interactions: nz(ins.total_interactions), synced_at: new Date().toISOString(),
+      });
+    });
+  } catch { /* no live stories, or stories not available for this account */ }
+
   if (rows.length) {
     const { error } = await db.from('social_posts').upsert(rows, { onConflict: 'id' });
     if (error) throw error;
@@ -234,7 +252,7 @@ Deno.serve(async (req) => {
   const db = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const body = await req.json().catch(() => ({}));
 
-  // Nightly cron: no login, but never more than once every 30 minutes.
+  // Scheduled run (every 6 hours): no login, but never more than once every 30 minutes.
   if (body.action === 'cron') {
     const { data } = await db.from('social_accounts').select('last_synced_at');
     const last = Math.max(0, ...(data ?? []).map((a) => Date.parse(a.last_synced_at ?? '') || 0));

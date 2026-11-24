@@ -67,7 +67,10 @@ export default function Calendar() {
       } />
 
       {!can('calendar.view_all') && (
-        <p className="text-xs text-stone-500 -mt-2">Showing your events: things you're scheduled for and your requests' dates.</p>
+        <p className="text-xs text-stone-500 -mt-2">
+          Showing your events: things you're scheduled for and your requests' dates
+          {can('team.strategy') && can('team.execution') ? ', plus Strategy and Execution requests' : can('team.strategy') ? ', plus requests in Strategy' : can('team.execution') ? ', plus requests in Execution' : ''}.
+        </p>
       )}
 
       {editing && <CalendarItemForm initial={editing} onDone={(c) => { setEditing(null); if (c) reload(); }} />}

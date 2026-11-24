@@ -43,6 +43,7 @@ const U = {
   staff:    '00000000-0000-0000-0000-000000000005', // Sales staff
   staff2:   '00000000-0000-0000-0000-000000000006', // Front Desk staff
   claude:   '00000000-0000-0000-0000-000000000007',
+  manager:  '00000000-0000-0000-0000-000000000008',
 };
 const dept = async (n) => (await db.query('select id from departments where name=$1', [n])).rows[0].id;
 const SALES = await dept('Sales'), FRONT = await dept('Front Desk');
@@ -95,11 +96,23 @@ await check('dept lead sees their department, not others', async () => {
   const ids = (await as('lead', 'select id from requests')).map((r) => r.id);
   expect(ids.includes(r1.id) && !ids.includes(r2.id) && !ids.includes(r3.id), JSON.stringify(ids));
 });
-await check('strategy, execution and Claude see everything', async () => {
-  for (const u of ['strategy', 'exec', 'claude']) {
+await check('Managers and Claude see everything', async () => {
+  for (const u of ['manager', 'claude']) {
     const n = (await as(u, 'select id from requests')).length;
     expect(n === 3, `${u} saw ${n}`);
   }
+});
+await check('Strategy team sees Strategy-stage requests (+ their own)', async () => {
+  const ids = (await as('strategy', 'select id from requests')).map((r) => r.id);
+  expect(ids.length === 3 && ids.includes(r2.id), JSON.stringify(ids));
+});
+await check('Execution team does not see Strategy-stage requests', async () => {
+  const ids = (await as('exec', 'select id from requests')).map((r) => r.id);
+  expect(ids.length === 1 && ids[0] === r3.id, JSON.stringify(ids));
+});
+await check('Managers are view-only by default', async () => {
+  const rows = await as('manager', `update requests set details='x' where id=$1 returning id`, [r2.id]);
+  expect(rows.length === 0, 'manager edited a request');
 });
 await check('staff cannot create a request on behalf of someone else', () =>
   expectError(as('staff', `insert into requests (title, type, requester_id) values ('x','Reel',$1)`, [U.staff2])));
@@ -126,6 +139,11 @@ await check('Claude can update status', async () => {
   const rows = await as('claude', `update requests set status='Ready for Execution' where id=$1 returning id`, [r1.id]);
   expect(rows.length === 1, 'no update');
 });
+await check('moving to Execution hands it from Strategy to Execution', async () => {
+  const s = (await as('strategy', 'select id from requests where id=$1', [r1.id])).length;
+  const e = (await as('exec', 'select id from requests where id=$1', [r1.id])).length;
+  expect(s === 0 && e === 1, `strategy ${s}, exec ${e}`);
+});
 await check('only admin can delete requests', async () => {
   for (const u of ['staff', 'strategy', 'claude']) {
     const rows = await as(u, 'delete from requests where id=$1 returning id', [r2.id]);
@@ -143,16 +161,16 @@ await check('strategy can assign execution', async () => {
 });
 await check('staff2 cannot see request files of others', async () => {
   await as('strategy', `insert into request_files (request_id, storage_path, file_name, mime, size_bytes)
-    values ($1::uuid, 'requests/'||$1::text||'/a.jpg', 'a.jpg', 'image/jpeg', 1000)`, [r1.id]);
+    values ($1::uuid, 'requests/'||$1::text||'/a.jpg', 'a.jpg', 'image/jpeg', 1000)`, [r3.id]);
   const rows = await as('staff2', 'select * from request_files');
   expect(rows.length === 0, 'leak');
 });
 await check('files over 10 MB are rejected', () =>
   expectError(as('strategy', `insert into request_files (request_id, storage_path, file_name, mime, size_bytes)
-    values ($1::uuid, 'requests/'||$1::text||'/big.pdf', 'big.pdf', 'application/pdf', 20000000)`, [r1.id])));
+    values ($1::uuid, 'requests/'||$1::text||'/big.pdf', 'big.pdf', 'application/pdf', 20000000)`, [r3.id])));
 await check('videos cannot be uploaded (Drive links only)', () =>
   expectError(as('strategy', `insert into request_files (request_id, storage_path, file_name, mime, size_bytes)
-    values ($1::uuid, 'requests/'||$1::text||'/v.mp4', 'v.mp4', 'video/mp4', 1000)`, [r1.id])));
+    values ($1::uuid, 'requests/'||$1::text||'/v.mp4', 'v.mp4', 'video/mp4', 1000)`, [r3.id])));
 
 console.log('\nStorage');
 await check('staff can upload to their own New request folder', async () => {
@@ -360,8 +378,10 @@ await check('a new request notifies the Strategy team', async () => {
 await check('staff cannot approve; Strategy can', async () => {
   await expectError(as('staff', 'select approve_request($1)', [wf.id]));
   await as('strategy', 'select approve_request($1)', [wf.id]);
-  const [r] = await as('strategy', 'select status, section from requests where id=$1', [wf.id]);
+  const [r] = await as('admin', 'select status, section from requests where id=$1', [wf.id]);
   expect(r.status === 'Ready for Execution' && r.section === 'Execution', JSON.stringify(r));
+  const s = await as('strategy', 'select id from requests where id=$1', [wf.id]);
+  expect(s.length === 0, 'Strategy still sees it after handing it to Execution');
 });
 await check('approval notifies Execution and the requester', async () => {
   const admin = await as('admin', `select * from notifications where kind='request.approved'`);
@@ -373,6 +393,15 @@ await check('approving twice is refused', () => expectError(as('strategy', 'sele
 await check('you only see your own notifications', async () => {
   const theirs = await as('staff2', `select * from notifications where user_id <> $1`, [U.staff2]);
   expect(theirs.length === 0, 'saw other people\'s notifications');
+});
+
+console.log('\nPosting goals');
+await check('everyone can read goals; only the admin can change them', async () => {
+  expect((await as('staff', 'select * from content_goals')).length === 2, 'staff cannot read goals');
+  await expectError(as('manager', `insert into content_goals (name, kind, target) values ('Stories','story',5)`));
+  const upd = await as('strategy', `update content_goals set target=99 returning id`);
+  expect(upd.length === 0, 'strategy changed a goal');
+  await as('admin', `insert into content_goals (name, kind, target, period) values ('Stories','story',20,'month')`);
 });
 
 console.log('\nCalendar');

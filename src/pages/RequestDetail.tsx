@@ -1,7 +1,7 @@
 // One request: workflow controls (media team), brief/script, details, files and Drive links.
 // The comment thread is added in step 2 (chat).
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { PRIORITIES, SECTIONS, STATUSES } from '../lib/constants';
@@ -55,7 +55,13 @@ export default function RequestDetail() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (notFound) return <p>Request not found, or you don't have access to it.</p>;
+  if (notFound) return (
+    <div className="space-y-2">
+      <p>Request not found, or you don't have access to it.</p>
+      <p className="text-sm text-stone-500">If it was just moved to the other team's stage, it now lives with that team.</p>
+      <Link to="/" className="text-blue underline text-sm">← Home</Link>
+    </div>
+  );
   if (!r || !draft || !me) return <p>Loading…</p>;
 
   // What this person can do here (the database enforces the same rules).
@@ -148,7 +154,11 @@ export default function RequestDetail() {
     setError(''); setBusy('Approving…');
     const { error } = await supabase.rpc('approve_request', { rid: r!.id });
     setBusy('');
-    if (error) setError(error.message); else load();
+    if (error) { setError(error.message); return; }
+    // Strategy-only people no longer see it once it's handed to Execution
+    const { data: still } = await supabase.from('requests').select('id').eq('id', r!.id).maybeSingle();
+    if (still) load();
+    else { alert(`#${r!.number} approved and sent to the Execution team.`); nav('/'); }
   }
 
   return (

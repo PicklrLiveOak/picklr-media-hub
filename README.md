@@ -178,3 +178,22 @@ The token is stored in a locked part of the database that the website can't read
 - **Admin → Setup**: add, rename, recolor, reorder or remove **content pillars** and **request categories**. Removing hides an item from pickers; old items keep their label. Use **Show removed → Restore** to bring one back.
 - **Chat → 📌 General**: everyone is in it automatically, including people you add later. Create other groups the same way as before.
 - **🔔 Notifications** (top right): new requests, approvals, status changes, schedule invites and @mentions.
+
+## Step 4: access levels and posting goals
+
+### Access levels (Admin → Access)
+Pick a level for each person; their switches reset to that level's defaults, then tick any extras.
+
+| Level | Sees |
+|---|---|
+| Admin | Everything, plus the Admin page |
+| Manager | Everything (every request, everyone's calendar, insights), view-only by default |
+| Media Strategy | Requests in the Strategy stage (New, In Strategy) + their own; their own calendar |
+| Media Execution | Requests in the Execution stage (Ready for Execution → Posted) + their own; their own calendar |
+| Department Lead | Their department's requests |
+| Team member (default) | Only the requests, calendar items and progress tied to them |
+
+A request's stage follows its status, so moving a card to "Ready for Execution" (or approving it) hands it from Strategy to Execution.
+
+### Posting goals (Admin → Setup)
+Add goals like "3 Reels per week" or "20 Stories per month". Insights and the report track each week/month against them. Stories count from Instagram only; the sync now runs every 6 hours so each story is caught while it's live.

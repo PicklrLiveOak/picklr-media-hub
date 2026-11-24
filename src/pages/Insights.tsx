@@ -5,10 +5,11 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { fmtDateTime } from '../lib/format';
-import { RANGES, TARGET, fmtN, fmtPct, interactionsOf, useInsights, type Platform, type RangeKey } from '../lib/insights';
+import { RANGES, fmtN, fmtPct, interactionsOf, useInsights, type Platform, type RangeKey } from '../lib/insights';
 import type { SocialAccount, SocialPost } from '../lib/types';
 import LineChart from '../components/LineChart';
 import { ErrorNote, PageHeader, TokenWarning } from '../components/ui';
+import GoalProgress from '../components/GoalProgress';
 
 export default function Insights() {
   const { can } = useAuth();
@@ -74,23 +75,10 @@ export default function Insights() {
         </div>
       )}
 
-      {/* Cadence vs target */}
+      {/* Posting goals (Admin → Setup) */}
       <section className="card p-4">
-        <h2 className="h-display text-lg">Posting vs target</h2>
-        <p className="text-xs text-stone-500 mb-2">Instagram, per week · target {TARGET.reels} Reels + {TARGET.graphics} graphics</p>
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-stone-500"><th className="py-1 font-semibold">Week of</th><th>Reels</th><th>Graphics</th><th></th></tr></thead>
-          <tbody>
-            {d.cadence.map((w) => (
-              <tr key={w.week} className="border-t border-line">
-                <td className="py-1.5">{new Date(`${w.week}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                <td className={w.reels >= TARGET.reels ? '' : 'text-red-600'}>{w.reels}/{TARGET.reels}</td>
-                <td className={w.graphics >= TARGET.graphics ? '' : 'text-red-600'}>{w.graphics}/{TARGET.graphics}</td>
-                <td>{w.met ? '✅ Met' : '⚠️ Short'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2 className="h-display text-lg mb-2">Posting goals</h2>
+        <GoalProgress tables={d.goalTables} />
       </section>
 
       {/* By pillar */}

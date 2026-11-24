@@ -28,7 +28,8 @@ export const startOfWeek = (d: Date) => addDays(d, -d.getDay()); // weeks start 
 /** Loads everything between `from` and `to` (inclusive local days). */
 export function useCalendar(from: Date, to: Date) {
   const { me, can } = useAuth();
-  const all = can('calendar.view_all'); // plain boolean so the loader doesn't re-run every render
+  const all = can('calendar.view_all'); // plain booleans so the loader doesn't re-run every render
+  const strategy = can('team.strategy'), execution = can('team.execution');
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const fromKey = dayKey(from), toKey = dayKey(to);
@@ -40,7 +41,7 @@ export function useCalendar(from: Date, to: Date) {
     const [items, reqs] = await Promise.all([
       supabase.from('calendar_items').select('*, calendar_assignees(user_id)')
         .gte('starts_at', start.toISOString()).lt('starts_at', end.toISOString()).order('starts_at'),
-      supabase.from('requests').select('id, number, title, needed_by, event_date, event_name, created_at, requester_id, created_by, status, request_assignees(user_id)')
+      supabase.from('requests').select('id, number, title, needed_by, event_date, event_name, created_at, requester_id, created_by, status, section, request_assignees(user_id)')
         .or(`needed_by.gte.${fromKey},event_date.gte.${fromKey},created_at.gte.${start.toISOString()}`),
     ]);
     const out: CalEvent[] = [];
@@ -52,10 +53,12 @@ export function useCalendar(from: Date, to: Date) {
         people: (it.calendar_assignees ?? []).map((a) => a.user_id), item: it,
       });
     }
-    // Request dates: everyone sees their own; "see everyone's calendar" sees all requests they can open
+    // Request dates: everyone sees their own, the Strategy/Execution teams also
+    // see their stage's requests, and "see everyone's calendar" sees every request they can open
     for (const r of (reqs.data as MediaRequest[]) ?? []) {
       const mine = r.requester_id === me.id || r.created_by === me.id || r.request_assignees?.some((a) => a.user_id === me.id);
-      if (!all && !mine) continue;
+      const myStage = (strategy && r.section === 'Strategy') || (execution && r.section === 'Execution');
+      if (!all && !mine && !myStage) continue;
       const people = [r.requester_id, ...(r.request_assignees ?? []).map((a) => a.user_id)];
       const link = `/r/${r.number}`;
       if (r.needed_by && r.needed_by >= fromKey && r.needed_by <= toKey && r.status !== 'Posted') {
@@ -76,7 +79,7 @@ export function useCalendar(from: Date, to: Date) {
     out.sort((a, b) => a.day.localeCompare(b.day) || Number(b.allDay) - Number(a.allDay) || a.start.getTime() - b.start.getTime());
     setEvents(out);
     setLoading(false);
-  }, [me?.id, fromKey, toKey, all]);
+  }, [me?.id, fromKey, toKey, all, strategy, execution]);
 
   useEffect(() => {
     load();

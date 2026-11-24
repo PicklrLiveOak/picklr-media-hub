@@ -12,6 +12,11 @@ import { PageHeader } from '../components/ui';
 type View = 'kanban' | 'list';
 const VIEW_KEY = 'board.view';
 
+const STAGE_STATUSES: Record<string, string[]> = {
+  Strategy: ['New', 'In Strategy', 'On Hold'],
+  Execution: ['Ready for Execution', 'In Production', 'Scheduled', 'Posted', 'On Hold'],
+};
+
 export default function Board() {
   const { team, departments, can, pillars, requestTypes } = useAuth();
   const [rows, setRows] = useState<MediaRequest[]>([]);
@@ -19,6 +24,14 @@ export default function Board() {
   const [filter, setFilter] = useState({ pillar: '', person: '', type: '', dept: '', section: '', q: '' });
   const [dragId, setDragId] = useState<string | null>(null);
   const canMove = can('requests.manage');
+  // People without "see every request" get a board of what's relevant to them:
+  // their team's stage (Strategy / Execution) plus their own and assigned requests.
+  const seesAll = can('requests.view_all');
+  const stages = [can('team.strategy') && 'Strategy', can('team.execution') && 'Execution'].filter(Boolean) as string[];
+  const scopeNote = seesAll ? '' : stages.length
+    ? `Showing requests in ${stages.join(' and ')}, plus ones you requested or are assigned to.`
+    : can('requests.view_dept') ? "Showing your department's requests and ones you're part of."
+    : "Showing requests you've made or are assigned to.";
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('requests').select('*, request_assignees(user_id)')
@@ -74,6 +87,7 @@ export default function Board() {
         </div>
       } />
 
+      {scopeNote && <p className="text-xs text-stone-500 -mt-2 mb-2">{scopeNote}</p>}
       <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4">
         <input className="input !py-1.5 !w-36 shrink-0" placeholder="Search…" value={filter.q}
           onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
@@ -86,7 +100,8 @@ export default function Board() {
 
       {view === 'kanban' ? (
         <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-4">
-          {STATUSES.map((status) => {
+          {STATUSES.filter((status) => seesAll || can('requests.view_dept') || shown.some((r) => r.status === status) ||
+            stages.some((st) => STAGE_STATUSES[st].includes(status))).map((status) => {
             const items = shown.filter((r) => r.status === status);
             return (
               <section key={status}

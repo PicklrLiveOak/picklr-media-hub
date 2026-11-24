@@ -1,10 +1,17 @@
-// Admin → Setup: add, rename, recolor and remove content pillars and
-// request categories. "Remove" hides an item from pickers but keeps it on
+// Admin → Setup: posting goals, plus content pillars and request categories.
+// Pillars/categories: "Remove" hides an item from pickers but keeps it on
 // existing requests and posts, so history never breaks.
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { ErrorNote } from '../components/ui';
+import type { ContentGoal } from '../lib/types';
+
+export const GOAL_KINDS: [ContentGoal['kind'], string][] = [
+  ['reel', 'Reels & videos'], ['graphic', 'Graphics (photos + carousels)'], ['carousel', 'Carousels only'],
+  ['story', 'Stories'], ['any', 'Any feed post (not stories)'],
+];
+const PLATFORMS: [ContentGoal['platform'], string][] = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['all', 'Both']];
 
 type Row = { name: string; color?: string; sort: number; active: boolean };
 
@@ -12,6 +19,7 @@ export default function AdminSetup() {
   const { pillars, requestTypes, reload } = useAuth();
   return (
     <div className="grid md:grid-cols-2 gap-4 max-w-4xl">
+      <GoalsEditor />
       <ListEditor title="Content pillars" table="pillars" rows={pillars} withColor onChange={reload}
         hint="Tag requests and Instagram/Facebook posts. Colors show on the board and calendar." />
       <ListEditor title="Request categories" table="request_types" rows={requestTypes} onChange={reload}
@@ -119,6 +127,79 @@ function ListEditor({ title, table, rows, withColor, hint, onChange }: {
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+function GoalsEditor() {
+  const { goals, reload } = useAuth();
+  const blank = { name: '', kind: 'reel' as ContentGoal['kind'], platform: 'instagram' as ContentGoal['platform'], target: 3, period: 'week' as ContentGoal['period'] };
+  const [f, setF] = useState(blank);
+  const [error, setError] = useState('');
+
+  async function run(q: PromiseLike<{ error: { message: string } | null }>) {
+    setError('');
+    const { error } = await q;
+    if (error) setError(error.message);
+    await reload();
+    return !error;
+  }
+  const save = (g: ContentGoal, patch: Partial<ContentGoal>) => run(supabase.from('content_goals').update(patch).eq('id', g.id));
+
+  async function add() {
+    if (!f.name.trim() || !(f.target > 0)) return;
+    const sort = Math.max(0, ...goals.map((g) => g.sort)) + 1;
+    if (await run(supabase.from('content_goals').insert({ ...f, name: f.name.trim(), sort }))) setF(blank);
+  }
+
+  return (
+    <section className="card p-4 space-y-3 min-w-0 md:col-span-2">
+      <div>
+        <h2 className="h-display text-lg">Posting goals</h2>
+        <p className="text-xs text-stone-500">How many posts you aim for each week or month. Insights and the report track progress against these, counted from your synced Instagram/Facebook posts.</p>
+      </div>
+
+      {goals.length === 0 && <p className="text-sm text-stone-500">No goals yet. Add one below.</p>}
+      <ul className="divide-y divide-line">
+        {goals.map((g) => (
+          <li key={g.id} className="py-2 flex flex-wrap items-center gap-2">
+            <span className="font-semibold min-w-0 flex-1 basis-32 truncate">{g.name}</span>
+            <input type="number" min={1} max={200} defaultValue={g.target} aria-label={`Target for ${g.name}`}
+              className="input !w-20 !py-1.5" onBlur={(e) => { const n = Number(e.target.value); if (n > 0 && n !== g.target) save(g, { target: n }); }} />
+            <select className="input !w-auto !py-1.5" value={g.period} aria-label="Per" onChange={(e) => save(g, { period: e.target.value as ContentGoal['period'] })}>
+              <option value="week">per week</option><option value="month">per month</option>
+            </select>
+            <select className="input !w-auto !py-1.5" value={g.kind} aria-label="Counts" onChange={(e) => save(g, { kind: e.target.value as ContentGoal['kind'] })}>
+              {GOAL_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+            <select className="input !w-auto !py-1.5" value={g.platform} aria-label="Platform" onChange={(e) => save(g, { platform: e.target.value as ContentGoal['platform'] })}>
+              {PLATFORMS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+            <button className="text-sm text-blue underline" onClick={() => { const n = prompt('Rename goal:', g.name)?.trim(); if (n && n !== g.name) save(g, { name: n }); }}>Rename</button>
+            <button className="text-sm text-red-600 underline"
+              onClick={() => confirm(`Delete the "${g.name}" goal?`) && run(supabase.from('content_goals').delete().eq('id', g.id))}>Delete</button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-wrap gap-2 items-center border-t border-line pt-3">
+        <input className="input !w-auto flex-1 basis-40" placeholder="New goal (e.g. Stories)" maxLength={40}
+          value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+        <input type="number" min={1} max={200} className="input !w-20" aria-label="Target"
+          value={f.target} onChange={(e) => setF({ ...f, target: Number(e.target.value) })} />
+        <select className="input !w-auto" value={f.period} aria-label="Per" onChange={(e) => setF({ ...f, period: e.target.value as ContentGoal['period'] })}>
+          <option value="week">per week</option><option value="month">per month</option>
+        </select>
+        <select className="input !w-auto" value={f.kind} aria-label="Counts" onChange={(e) => setF({ ...f, kind: e.target.value as ContentGoal['kind'] })}>
+          {GOAL_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <select className="input !w-auto" value={f.platform} aria-label="Platform" onChange={(e) => setF({ ...f, platform: e.target.value as ContentGoal['platform'] })}>
+          {PLATFORMS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <button className="btn btn-primary" disabled={!f.name.trim() || !(f.target > 0)} onClick={add}>Add goal</button>
+      </div>
+      <p className="text-xs text-stone-500">Stories count from Instagram only. Meta only shares a story while it's live (24 hours), so the app checks for new stories every few hours.</p>
+      <ErrorNote error={error} />
     </section>
   );
 }
