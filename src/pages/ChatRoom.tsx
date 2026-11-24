@@ -6,6 +6,7 @@ import { useChats } from '../lib/chats';
 import { supabase } from '../lib/supabase';
 import ChatThread from '../components/ChatThread';
 import MemberPicker from '../components/MemberPicker';
+import MuteButton from '../components/MuteButton';
 import { Avatar, ErrorNote } from '../components/ui';
 
 type ChatInfo = { id: string; kind: string; name: string | null; request_id: string | null; created_by: string | null; is_default: boolean };
@@ -52,7 +53,8 @@ export default function ChatRoom() {
           {chat.kind === 'group' && <div className="text-xs text-stone-500">{chat.is_default ? 'Everyone' : `${members.length} member${members.length === 1 ? '' : 's'}`}</div>}
           {chat.kind === 'request' && req && <Link to={`/r/${req.number}`} className="text-xs text-blue underline">Open request →</Link>}
         </div>
-        {canManage && <button className="btn btn-ghost text-sm" onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Members'}</button>}
+        <MuteButton chatId={chat.id} className="shrink-0 !px-2.5" />
+        {canManage && <button className="btn btn-ghost text-sm shrink-0" onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Members'}</button>}
       </div>
 
       {editing && <GroupSettings chat={chat} members={members} onSaved={() => { load(); reload(); }} />}

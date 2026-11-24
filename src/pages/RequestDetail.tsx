@@ -11,6 +11,7 @@ import type { MediaRequest, RequestFile } from '../lib/types';
 import { Avatar, ErrorNote, Field, StatusChip } from '../components/ui';
 import LinksEditor, { cleanLinks } from '../components/LinksEditor';
 import ChatThread from '../components/ChatThread';
+import MuteButton from '../components/MuteButton';
 import CalendarItemForm from '../components/CalendarItemForm';
 import type { CalendarItem } from '../lib/types';
 import { CALENDAR_STYLE } from '../lib/constants';
@@ -25,7 +26,12 @@ function RequestComments({ requestId }: { requestId: string }) {
   }, [requestId]);
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!chatId) return <p className="text-sm text-stone-500">Loading comments…</p>;
-  return <ChatThread chatId={chatId} allowInternal compact />;
+  return (
+    <>
+      <div className="flex justify-end -mt-1 mb-1"><MuteButton chatId={chatId} className="!py-1 !px-2.5 !text-xs" /></div>
+      <ChatThread chatId={chatId} allowInternal compact />
+    </>
+  );
 }
 
 export default function RequestDetail() {

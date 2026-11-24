@@ -11,7 +11,7 @@ clientsClaim();
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
-type Payload = { title?: string; body?: string; url?: string; tag?: string };
+type Payload = { title?: string; body?: string; url?: string; tag?: string; icon?: string };
 
 // iPhone requires every push to show a notification, so always show one.
 self.addEventListener('push', (event) => {
@@ -20,7 +20,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     await self.registration.showNotification(p.title || 'Picklr Media Hub', {
       body: p.body || '',
-      icon: 'pwa-192x192.png',
+      icon: p.icon || 'pwa-192x192.png', // sender's photo for chats, otherwise the Picklr logo
       badge: 'pwa-64x64.png',
       tag: p.tag,
       data: { url: p.url || '/' },

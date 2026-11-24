@@ -43,5 +43,5 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 }
 
 export const NOTICE_ICON: Record<string, string> = {
-  'request.new': '📥', 'request.approved': '✅', 'request.status': '🔄', 'calendar.assigned': '📅', 'chat.mention': '💬',
+  'request.new': '📥', 'request.approved': '✅', 'request.status': '🔄', 'calendar.assigned': '📅', 'request.assigned': '🙋', 'chat.mention': '💬',
 };

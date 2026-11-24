@@ -462,5 +462,34 @@ await check('you cannot change someone else\'s settings; the admin can', async (
   expect(adm.length === 1, 'admin could not change settings');
 });
 
+console.log('\nNotification fixes');
+const [nr] = await as('staff2', `insert into requests (title, type) values ('Notify test','Reel') returning id, number`);
+await check('being assigned to a request notifies you', async () => {
+  await as('admin', 'insert into request_assignees values ($1, $2)', [nr.id, U.staff]);
+  const n = await as('staff', `select * from notifications where kind='request.assigned' and link=$1`, [`/r/${nr.number}`]);
+  expect(n.length === 1 && n[0].actor_id === U.admin, JSON.stringify(n));
+});
+await check('status changes notify the requester and everyone assigned', async () => {
+  await as('admin', `update requests set status='In Strategy' where id=$1`, [nr.id]);
+  for (const u of ['staff', 'staff2']) {
+    const n = await as(u, `select * from notifications where kind='request.status' and link=$1`, [`/r/${nr.number}`]);
+    expect(n.length === 1, `${u} got ${n.length}`);
+  }
+});
+await check('people assigned later join the comment thread', async () => {
+  const [{ request_chat: cid }] = await as('staff2', 'select request_chat($1)', [nr.id]);
+  await as('admin', 'insert into request_assignees values ($1, $2)', [nr.id, U.lead]);
+  const m = await as('admin', 'select user_id from chat_members where chat_id=$1 and user_id=$2', [cid, U.lead]);
+  expect(m.length === 1, 'lead not added to the thread');
+});
+await check('you can mute a chat you are in, but not one you cannot see', async () => {
+  const [g] = await as('admin', 'select id from chats where is_default');
+  await as('staff', 'select set_chat_muted($1, true)', [g.id]);
+  const [m] = await as('staff', 'select muted from chat_members where chat_id=$1 and user_id=$2', [g.id, U.staff]);
+  expect(m.muted === true, 'not muted');
+  const [dm] = await as('admin', `select start_dm($1) as id`, [U.staff2]);
+  await expectError(as('staff', 'select set_chat_muted($1, true)', [dm.id]));
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);
