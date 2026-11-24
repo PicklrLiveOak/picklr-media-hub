@@ -222,3 +222,6 @@ Click Connect → Media Hub opens → sign in → **Approve**.
 - Every change Claude makes is in **Admin → Activity** (source: Claude).
 - Who can connect: admins, plus anyone with **Use Claude as an assistant** ticked in Admin → People.
 - Under the hood: Supabase Auth's OAuth 2.1 server (Authentication → OAuth Server, approval page `oauth-consent.html`) and the `mcp` Edge Function. The Claude account's password is the `CLAUDE_ACCOUNT_PASSWORD` secret.
+
+### Scheduled briefings
+A Claude desktop scheduled task ("Picklr Media Hub briefing", 7am / 11am / 3pm / 6pm) calls the connector's `whats_new` tool, reads new requests and chats, and DMs a "📋" briefing to **newnehemiah** from the Claude account (which pushes to the phone). It only runs while the Claude desktop app is open on Nehemiah's Mac; a missed run happens at next launch. Edit or pause it under **Scheduled** in the Claude app sidebar.

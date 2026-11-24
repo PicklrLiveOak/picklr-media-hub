@@ -137,6 +137,59 @@ const TOOLS: { name: string; description: string; inputSchema: Json; write?: boo
     },
   },
   {
+    name: 'whats_new',
+    description: 'Everything new since the last briefing (or since a time you pass): new requests, requests that changed, new chat messages (with @mentions flagged), things due soon and the next 48 hours of calendar. Built for scheduled briefings.',
+    inputSchema: { type: 'object', properties: {
+      since: { type: 'string', description: 'ISO time. Default: when the Claude account last sent a 📋 briefing DM to briefing_for (or 24 hours ago).' },
+      briefing_for: { type: 'string', description: 'Username the briefings go to, used to find the last briefing time. Default: me.' },
+    } },
+    annotations: { readOnlyHint: true },
+    async run(ctx, a) {
+      const forUser = a.briefing_for ? findPerson(ctx.team, String(a.briefing_for)) : ctx.me;
+      const claude = ctx.team.find((t) => t.role === 'claude');
+      let since = a.since ? new Date(a.since).toISOString() : '';
+      let lastBriefing: string | null = null;
+      if (claude) {
+        // Last 📋 DM from the Claude account to that person (service role: just a timestamp)
+        const { data: dms } = await ctx.admin.from('messages').select('created_at, chat_id, chats!inner(kind)')
+          .eq('author_id', claude.id).eq('chats.kind', 'dm').like('body', '📋%').order('created_at', { ascending: false }).limit(20);
+        for (const m of (dms ?? []) as Json[]) {
+          const { count } = await ctx.admin.from('chat_members').select('user_id', { count: 'exact', head: true }).eq('chat_id', m.chat_id).eq('user_id', forUser.id);
+          if (count) { lastBriefing = m.created_at; break; }
+        }
+      }
+      if (!since) since = lastBriefing ?? new Date(Date.now() - 24 * 3600e3).toISOString();
+      const soon = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
+      const [created, changed, msgs, due, cal] = await Promise.all([
+        ctx.db.from('requests').select('number, title, type, status, pillar, priority, needed_by, event_name, event_date, details, brief, requester_id, department_label, created_at')
+          .gt('created_at', since).order('created_at'),
+        ctx.db.from('requests').select('number, title, status, pillar, priority, needed_by, updated_at').gt('updated_at', since).lte('created_at', since).order('updated_at'),
+        ctx.db.from('messages').select('author_id, body, mentions, internal, created_at, attachment_path, chats!inner(kind, name, is_default, request_id)')
+          .gt('created_at', since).order('created_at').limit(200),
+        ctx.db.from('requests').select('number, title, status, needed_by').lte('needed_by', soon).neq('status', 'Posted').order('needed_by'),
+        ctx.db.from('calendar_items').select('type, title, starts_at, location, calendar_assignees(user_id)')
+          .gte('starts_at', new Date().toISOString()).lte('starts_at', new Date(Date.now() + 2 * 864e5).toISOString()).order('starts_at'),
+      ]);
+      const reqNum = new Map<string, number>();
+      const ids = [...new Set(((msgs.data ?? []) as Json[]).map((m) => m.chats.request_id).filter(Boolean))];
+      if (ids.length) for (const r of ((await ctx.db.from('requests').select('id, number').in('id', ids)).data ?? []) as Json[]) reqNum.set(r.id, r.number);
+      const watch = new Set([ctx.me.id, forUser.id]);
+      return {
+        since, since_local: fmtWhen(since), last_briefing_at: fmtWhen(lastBriefing), briefing_for: forUser.username,
+        new_requests: ((created.data ?? []) as Json[]).map((r) => ({ ...r, requester: nameOf(ctx.team, r.requester_id), requester_id: undefined,
+          has_brief: !!r.brief, brief: undefined, details: (r.details ?? '').slice(0, 600), submitted: fmtWhen(r.created_at), created_at: undefined })),
+        updated_requests: ((changed.data ?? []) as Json[]).map((r) => ({ ...r, updated: fmtWhen(r.updated_at), updated_at: undefined })),
+        new_messages: ((msgs.data ?? []) as Json[]).filter((m) => m.author_id !== claude?.id).map((m) => ({
+          chat: m.chats.kind === 'request' ? `#${reqNum.get(m.chats.request_id) ?? '?'} comments` : m.chats.kind === 'dm' ? `DM` : m.chats.name,
+          from: nameOf(ctx.team, m.author_id), at: fmtWhen(m.created_at), text: m.body || (m.attachment_path ? '[photo]' : ''),
+          mentions_you: (m.mentions ?? []).some((x: string) => watch.has(x)) || undefined, internal: m.internal || undefined })),
+        due_within_3_days: due.data ?? [],
+        next_48_hours: ((cal.data ?? []) as Json[]).map((e) => ({ type: e.type, title: e.title, when: fmtWhen(e.starts_at), location: e.location,
+          people: (e.calendar_assignees ?? []).map((x: Json) => nameOf(ctx.team, x.user_id)) })),
+      };
+    },
+  },
+  {
     name: 'list_requests',
     description: 'Search media requests the user can see. Filter by status, pillar, type, or text.',
     inputSchema: { type: 'object', properties: {
