@@ -45,6 +45,7 @@ export const PERMISSIONS: { group: string; key: string; label: string }[] = [
   { group: 'Calendar', key: 'calendar.edit', label: 'Create & edit calendar items' },
   { group: 'Other', key: 'chat.create_groups', label: 'Create group chats' },
   { group: 'Other', key: 'insights.manage', label: 'Upload insights / connect Instagram' },
+  { group: 'Other', key: 'claude.connect', label: 'Use Claude as an assistant (Claude app connector)' },
   { group: 'Other', key: 'team.manage', label: 'Manage team & see audit log (admin)' },
 ];
 

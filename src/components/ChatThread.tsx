@@ -113,14 +113,14 @@ export default function ChatThread({ chatId, allowInternal = false, compact = fa
         {messages.map((m, i) => {
           const mine = m.author_id === me?.id;
           const author = person(m.author_id);
-          const showName = i === 0 || messages[i - 1].author_id !== m.author_id;
+          const showName = i === 0 || messages[i - 1].author_id !== m.author_id || messages[i - 1].via !== m.via;
           return (
             <div key={m.id} className={`flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
               <div className="w-7 shrink-0">{showName && !mine && <Avatar person={author} size={28} />}</div>
               <div className={`max-w-[80%] min-w-0 ${mine ? 'items-end' : 'items-start'} flex flex-col`}>
                 {showName && (
                   <div className="text-[11px] text-stone-500 mb-0.5">
-                    {mine ? 'You' : author?.full_name ?? 'Someone'} · {fmtDateTime(m.created_at)}
+                    {mine ? 'You' : author?.full_name ?? 'Someone'}{m.via === 'claude' && ' · via Claude ✳︎'} · {fmtDateTime(m.created_at)}
                   </div>
                 )}
                 <div className={`rounded-2xl px-3 py-2 text-[15px] break-words whitespace-pre-wrap ${

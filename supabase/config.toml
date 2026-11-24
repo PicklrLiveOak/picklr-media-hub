@@ -443,3 +443,9 @@ verify_jwt = false
 # looks the row up itself; the "test" action checks the caller's login itself.
 [functions.push-send]
 verify_jwt = false
+
+# mcp: the Claude connector. Claude signs in through Supabase Auth's OAuth 2.1
+# server; the function checks the token itself (and answers 401 with the
+# discovery header Claude needs), so the gateway JWT check is off.
+[functions.mcp]
+verify_jwt = false

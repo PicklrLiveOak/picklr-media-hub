@@ -207,3 +207,18 @@ Each person turns them on once per device: **Me → 🔔 Turn on notifications**
 - **What gets sent:** chat messages (DMs/groups, General, request comments), @mentions, status changes on your requests, being scheduled, and new/approved requests for the Strategy/Execution teams.
 - **Choosing:** everyone picks what they get on their Me page; the admin can change anyone's on Admin → People. The 🔔 bell in the app always shows everything.
 - **How it works:** database triggers call the `push-send` Edge Function (Web Push with VAPID keys, free, no email). The private key is the `VAPID_KEYS` Supabase secret; the public key is in `src/lib/push.ts`.
+
+## Step 6: Claude as your assistant (connector)
+
+Talk to Claude in the Claude app (phone, desktop or claude.ai) and it can work in Media Hub for you: review requests, draft hooks/scripts into the brief, move requests between pillars/statuses, approve to Execution, assign people, schedule shoots, read and send chats, and summarize Instagram/Facebook.
+
+**Connect (once):** Claude → Settings → Connectors → *Add custom connector* → name `Picklr Media Hub`, URL:
+```
+https://dkfimkjsolqhxtuqxdew.supabase.co/functions/v1/mcp
+```
+Click Connect → Media Hub opens → sign in → **Approve**.
+
+- Claude acts **as you** (your permissions). Chats it sends show "via Claude". Say "as the Claude account" and it uses the separate **Claude** team member instead (admin only).
+- Every change Claude makes is in **Admin → Activity** (source: Claude).
+- Who can connect: admins, plus anyone with **Use Claude as an assistant** ticked in Admin → People.
+- Under the hood: Supabase Auth's OAuth 2.1 server (Authentication → OAuth Server, approval page `oauth-consent.html`) and the `mcp` Edge Function. The Claude account's password is the `CLAUDE_ACCOUNT_PASSWORD` secret.

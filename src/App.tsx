@@ -18,6 +18,7 @@ import { NotificationsProvider } from './lib/notifications';
 import Calendar from './pages/Calendar';
 import Notifications from './pages/Notifications';
 import Me from './pages/Me';
+import OAuthConsent from './pages/OAuthConsent';
 
 // Hides a page unless the person has the permission (the database also blocks the data).
 function Gate({ perm, children }: { perm: string; children: ReactNode }) {
@@ -35,6 +36,7 @@ function Shell() {
     <ChatsProvider>
     <NotificationsProvider>
     <Routes>
+      <Route path="oauth" element={<OAuthConsent />} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="new" element={<Gate perm="section.requests"><NewRequest /></Gate>} />

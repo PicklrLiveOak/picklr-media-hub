@@ -82,6 +82,7 @@ export type Message = {
   attachment_path: string | null;
   link_url: string | null;
   internal: boolean;
+  via: 'claude' | null;
   created_at: string;
 };
 
