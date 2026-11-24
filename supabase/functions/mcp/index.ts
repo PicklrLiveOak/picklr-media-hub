@@ -346,6 +346,73 @@ const TOOLS: { name: string; description: string; inputSchema: Json; write?: boo
     },
   },
   {
+    name: 'list_library',
+    description: 'Search the Library: saved scripts, hooks, shot lists, captions, templates and notes for videos.',
+    inputSchema: { type: 'object', properties: { search: { type: 'string' }, kind: { type: 'string', description: 'Script, Hook, Shot list, Caption, Template, Notes, Other' },
+      pillar: { type: 'string' }, include_archived: { type: 'boolean' } } },
+    annotations: { readOnlyHint: true },
+    async run(ctx, a) {
+      let q = ctx.db.from('library_docs').select('id, title, kind, pillar, tags, body, pinned, archived, updated_at, request_id')
+        .order('pinned', { ascending: false }).order('updated_at', { ascending: false }).limit(50);
+      if (!a.include_archived) q = q.eq('archived', false);
+      if (a.kind) q = q.eq('kind', a.kind);
+      if (a.pillar) q = q.eq('pillar', a.pillar);
+      if (a.search) { const t = String(a.search).replace(/[%_,()]/g, ''); q = q.or(`title.ilike.%${t}%,body.ilike.%${t}%`); }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []).map((d: Json) => ({ id: d.id, title: d.title, kind: d.kind, pillar: d.pillar, tags: d.tags, pinned: d.pinned || undefined,
+        archived: d.archived || undefined, updated: fmtWhen(d.updated_at), preview: d.body.slice(0, 160), link: `${APP_URL}/library/${d.id}` }));
+    },
+  },
+  {
+    name: 'get_library_doc',
+    description: 'Read one Library doc in full (by id from list_library).',
+    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    annotations: { readOnlyHint: true },
+    async run(ctx, a) {
+      const { data, error } = await ctx.db.from('library_docs').select('*').eq('id', a.id).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Not found (or no Library access).');
+      let request: number | null = null;
+      if (data.request_id) request = (await ctx.db.from('requests').select('number').eq('id', data.request_id).maybeSingle()).data?.number ?? null;
+      return { ...data, request_number: request, request_id: undefined, created_by: nameOf(ctx.team, data.created_by), updated_by: nameOf(ctx.team, data.updated_by),
+        updated_at: fmtWhen(data.updated_at), link: `${APP_URL}/library/${data.id}` };
+    },
+  },
+  {
+    name: 'save_library_doc',
+    description: 'Save a script, hook, shot list, caption, template or notes to the Library. Without id it creates a new doc; with id it updates one (the old text is kept as a version). Use body_mode "append" to add to the end.',
+    inputSchema: { type: 'object', properties: {
+      as: AS, id: { type: 'string', description: 'Existing doc to update' }, title: { type: 'string' },
+      kind: { type: 'string', enum: ['Script', 'Hook', 'Shot list', 'Caption', 'Template', 'Notes', 'Other'] },
+      pillar: { type: 'string' }, body: { type: 'string' }, body_mode: { type: 'string', enum: ['replace', 'append'] },
+      tags: { type: 'array', items: { type: 'string' } }, request_number: { type: 'number', description: 'Link it to a request' },
+    } },
+    write: true,
+    async run(ctx, a) {
+      const row: Json = {};
+      for (const k of ['title', 'kind', 'pillar']) if (a[k] !== undefined) row[k] = a[k];
+      if (a.tags) row.tags = (a.tags as string[]).map((t) => t.trim().replace(/^#/, '').toLowerCase()).filter(Boolean);
+      if (a.request_number) row.request_id = (await getRequest(ctx, Number(a.request_number))).id;
+      if (a.id) {
+        const { data: cur, error: e0 } = await ctx.db.from('library_docs').select('id, title, body').eq('id', a.id).maybeSingle();
+        if (e0) throw e0;
+        if (!cur) throw new Error('Doc not found (or no Library access).');
+        if (a.body !== undefined) row.body = a.body_mode === 'append' && cur.body ? `${cur.body}\n\n${a.body}` : a.body;
+        const { error } = await ctx.db.from('library_docs').update(row).eq('id', a.id);
+        if (error) throw error;
+        await log(ctx, 'library.update', `updated "${row.title ?? cur.title}" in the Library`, { type: 'library', id: a.id });
+        return { ok: true, id: a.id, link: `${APP_URL}/library/${a.id}` };
+      }
+      if (!a.title) throw new Error('A new doc needs a title.');
+      row.body = a.body ?? '';
+      const { data, error } = await ctx.db.from('library_docs').insert(row).select('id').single();
+      if (error) throw error;
+      await log(ctx, 'library.create', `saved ${row.kind ?? 'Script'} "${a.title}" to the Library`, { type: 'library', id: data.id });
+      return { ok: true, id: data.id, link: `${APP_URL}/library/${data.id}` };
+    },
+  },
+  {
     name: 'list_team',
     description: 'Everyone on the team: name, username (for @mentions and DMs) and role.',
     inputSchema: { type: 'object', properties: {} },
@@ -493,7 +560,7 @@ const unauthorized = (msg = 'Sign in required') => json({ error: 'invalid_token'
 const INSTRUCTIONS = `You are connected to Picklr Media Hub, the media department's tool at The Picklr Live Oak (a pickleball club in San Antonio, TX; times are America/Chicago).
 Requests flow: New → In Strategy (Strategy team writes the hook/brief/script into the request's brief) → approve_request → Ready for Execution → In Production → Scheduled → Posted.
 Call get_overview first. Use get_options for valid pillars and types. You act as the signed-in person by default; pass as:"claude" only when they ask you to act as the Claude account.
-Write scripts into the request's brief (update_request with brief_mode "append" unless asked to replace). Before sending chats on someone's behalf, confirm the wording unless they told you exactly what to send.`;
+Write scripts into the request's brief (update_request with brief_mode "append" unless asked to replace). Reusable scripts, hooks, shot lists, captions and templates live in the Library (list_library / save_library_doc); check it for past examples before drafting, and save good drafts there when asked. Before sending chats on someone's behalf, confirm the wording unless they told you exactly what to send.`;
 
 async function handle(msg: Json, ctx: Ctx): Promise<Json | null> {
   const { id, method, params } = msg;

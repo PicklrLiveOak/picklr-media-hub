@@ -19,6 +19,8 @@ import Calendar from './pages/Calendar';
 import Notifications from './pages/Notifications';
 import Me from './pages/Me';
 import OAuthConsent from './pages/OAuthConsent';
+import Library from './pages/Library';
+import LibraryDocPage from './pages/LibraryDocPage';
 
 // Hides a page unless the person has the permission (the database also blocks the data).
 function Gate({ perm, children }: { perm: string; children: ReactNode }) {
@@ -47,6 +49,8 @@ function Shell() {
         <Route path="insights" element={<Gate perm="section.insights"><Insights /></Gate>} />
         <Route path="insights/report" element={<Gate perm="section.insights"><InsightsReport /></Gate>} />
         <Route path="calendar" element={<Gate perm="section.calendar"><Calendar /></Gate>} />
+        <Route path="library" element={<Gate perm="section.library"><Library /></Gate>} />
+        <Route path="library/:id" element={<Gate perm="section.library"><LibraryDocPage /></Gate>} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="admin" element={<Gate perm="team.manage"><Admin /></Gate>} />
         <Route path="team" element={<Navigate to="/admin?tab=people" replace />} />

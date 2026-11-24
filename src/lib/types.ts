@@ -142,3 +142,10 @@ export type ContentGoal = {
   id: string; name: string; kind: GoalKind; platform: 'instagram' | 'facebook' | 'all';
   target: number; period: 'week' | 'month'; sort: number; active: boolean;
 };
+
+export type LibraryDoc = {
+  id: string; title: string; kind: string; pillar: string | null; tags: string[]; body: string;
+  links: DriveLink[]; request_id: string | null; pinned: boolean; archived: boolean;
+  created_by: string | null; updated_by: string | null; created_at: string; updated_at: string;
+};
+export type LibraryVersion = { id: number; doc_id: string; title: string; body: string; saved_by: string | null; saved_at: string };

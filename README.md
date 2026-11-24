@@ -225,3 +225,6 @@ Click Connect → Media Hub opens → sign in → **Approve**.
 
 ### Scheduled briefings
 A Claude desktop scheduled task ("Picklr Media Hub briefing", 7am / 11am / 3pm / 6pm) calls the connector's `whats_new` tool, reads new requests and chats, and DMs a "📋" briefing to **newnehemiah** from the Claude account (which pushes to the phone). It only runs while the Claude desktop app is open on Nehemiah's Mac; a missed run happens at next launch. Edit or pause it under **Scheduled** in the Claude app sidebar.
+
+## Library (scripts, hooks, shot lists, captions, templates)
+The **📚 Library** tab is the media team's shared shelf for video scripts and reusable text. Search and filter by kind/pillar, pin favorites, archive old ones, link a doc to a request, copy text, or add a doc to a request's brief. Every edit keeps the previous version (View / Restore). On a request, **📚 Save to Library** saves its brief as a new doc. Access: `section.library` (open/read) and `library.edit` (add/edit): media teams and admin by default, managers read-only, team members none. Claude can use it through the connector (`list_library`, `get_library_doc`, `save_library_doc`).

@@ -16,6 +16,22 @@ import CalendarItemForm from '../components/CalendarItemForm';
 import type { CalendarItem } from '../lib/types';
 import { CALENDAR_STYLE } from '../lib/constants';
 
+/** Library docs (scripts, shot lists…) linked to this request. */
+function LinkedLibraryDocs({ requestId }: { requestId: string }) {
+  const [docs, setDocs] = useState<{ id: string; title: string; kind: string }[]>([]);
+  useEffect(() => {
+    supabase.from('library_docs').select('id, title, kind').eq('request_id', requestId).eq('archived', false)
+      .then(({ data }) => setDocs(data ?? []));
+  }, [requestId]);
+  if (!docs.length) return null;
+  return (
+    <div className="mt-3 border-t border-line pt-2 text-sm">
+      <div className="text-xs font-semibold text-stone-500 mb-1">In the Library</div>
+      {docs.map((d) => <Link key={d.id} to={`/library/${d.id}`} className="block text-blue underline">📚 {d.kind}: {d.title}</Link>)}
+    </div>
+  );
+}
+
 /** The request's comment thread (created the first time someone opens it). */
 function RequestComments({ requestId }: { requestId: string }) {
   const [chatId, setChatId] = useState<string | null>(null);
@@ -277,13 +293,22 @@ export default function RequestDetail() {
 
       {/* Brief / script */}
       <section className="card p-4">
-        <h2 className="h-display text-lg mb-2">Brief / Script</h2>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h2 className="h-display text-lg">Brief / Script</h2>
+          {can('library.edit') && r.brief && (
+            <button className="text-sm text-blue underline shrink-0"
+              onClick={() => nav('/library/new', { state: { title: r.title, body: r.brief, pillar: r.pillar, kind: 'Script', requestNumber: r.number } })}>
+              📚 Save to Library
+            </button>
+          )}
+        </div>
         {isManager ? (
           <textarea className="input min-h-48 font-mono" placeholder="Hook, shot list, script, caption ideas…"
             value={draft.brief ?? ''} onChange={(e) => setD({ brief: e.target.value || null })} />
         ) : (
           <p className="whitespace-pre-wrap text-sm">{r.brief || <span className="text-stone-500">The media team hasn't written a brief yet.</span>}</p>
         )}
+        {can('section.library') && <LinkedLibraryDocs requestId={r.id} />}
       </section>
 
       {/* Request details */}

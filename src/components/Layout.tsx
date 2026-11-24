@@ -39,6 +39,7 @@ export default function Layout() {
     { to: '/board', label: 'Board', icon: '▦', show: can('section.board'), badge: 0 },
     { to: '/calendar', label: 'Calendar', icon: '📅', show: can('section.calendar'), badge: 0 },
     { to: '/chat', label: 'Chat', icon: '💬', show: can('section.chat'), badge: totalUnread },
+    { to: '/library', label: 'Library', icon: '📚', show: can('section.library'), badge: 0 },
     { to: '/insights', label: 'Insights', icon: '📈', show: can('section.insights'), badge: 0 },
     { to: '/admin', label: 'Admin', icon: '⚙', show: can('team.manage'), badge: 0 },
     { to: '/me', label: 'Me', icon: '◉', show: true, badge: 0 },

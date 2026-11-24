@@ -35,6 +35,7 @@ export const PERMISSIONS: { group: string; key: string; label: string }[] = [
   { group: 'Sections they can open', key: 'section.calendar', label: 'Calendar' },
   { group: 'Sections they can open', key: 'section.chat', label: 'Chat' },
   { group: 'Sections they can open', key: 'section.insights', label: 'Insights' },
+  { group: 'Sections they can open', key: 'section.library', label: 'Library (scripts & templates)' },
   { group: 'Requests', key: 'requests.view_dept', label: "See all of their department's requests" },
   { group: 'Requests', key: 'requests.view_all', label: 'See every request' },
   { group: 'Requests', key: 'requests.manage', label: 'Manage requests (status, assignees, brief, tags)' },
@@ -43,6 +44,7 @@ export const PERMISSIONS: { group: string; key: string; label: string }[] = [
   { group: 'Workflow', key: 'team.execution', label: 'Execution team (sees & gets approved requests, schedules shoots)' },
   { group: 'Calendar', key: 'calendar.view_all', label: "See everyone's calendar (off = only their own)" },
   { group: 'Calendar', key: 'calendar.edit', label: 'Create & edit calendar items' },
+  { group: 'Other', key: 'library.edit', label: 'Add & edit Library docs (scripts, hooks, templates)' },
   { group: 'Other', key: 'chat.create_groups', label: 'Create group chats' },
   { group: 'Other', key: 'insights.manage', label: 'Upload insights / connect Instagram' },
   { group: 'Other', key: 'claude.connect', label: 'Use Claude as an assistant (Claude app connector)' },
@@ -63,4 +65,11 @@ export const POST_STATUSES = ['Draft', 'Ready', 'Scheduled', 'Posted'] as const;
 export const CALENDAR_DOT: Record<string, string> = {
   Shoot: 'bg-blue', 'Club Event': 'bg-emerald-600', Post: 'bg-violet-600', Livestream: 'bg-red-600',
   Meeting: 'bg-stone-700', Deadline: 'bg-amber-500', Due: 'bg-amber-500', Submitted: 'bg-stone-400', Event: 'bg-emerald-500',
+};
+
+export const LIBRARY_KINDS = ['Script', 'Hook', 'Shot list', 'Caption', 'Template', 'Notes', 'Other'] as const;
+export const LIBRARY_STYLE: Record<string, string> = {
+  Script: 'bg-blue text-white', Hook: 'bg-amber-100 text-amber-900', 'Shot list': 'bg-sky-100 text-sky-900',
+  Caption: 'bg-violet-100 text-violet-900', Template: 'bg-emerald-100 text-emerald-900', Notes: 'bg-stone-200 text-stone-800',
+  Other: 'bg-stone-100 text-stone-700',
 };

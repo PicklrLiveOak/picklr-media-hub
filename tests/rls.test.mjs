@@ -491,5 +491,33 @@ await check('you can mute a chat you are in, but not one you cannot see', async 
   await expectError(as('staff', 'select set_chat_muted($1, true)', [dm.id]));
 });
 
+console.log('\nLibrary');
+const [doc] = await as('strategy', `insert into library_docs (title, kind, body) values ('Turkey Shootout reel', 'Script', 'HOOK: v1') returning id, created_by`);
+await check('the media team can add scripts to the Library', async () => {
+  expect(doc.created_by === U.strategy, JSON.stringify(doc));
+});
+await check('team members cannot see the Library by default', async () => {
+  expect((await as('staff', 'select * from library_docs')).length === 0, 'staff saw library docs');
+  await expectError(as('staff', `insert into library_docs (title) values ('x')`));
+});
+await check('managers can read but not edit', async () => {
+  expect((await as('manager', 'select * from library_docs')).length === 1, 'manager cannot read');
+  const upd = await as('manager', `update library_docs set body='hacked' where id=$1 returning id`, [doc.id]);
+  expect(upd.length === 0, 'manager edited');
+});
+await check('editing keeps the previous version', async () => {
+  await as('admin', `update library_docs set body='HOOK: v2' where id=$1`, [doc.id]);
+  const v = await as('strategy', 'select body, saved_by from library_versions where doc_id=$1', [doc.id]);
+  expect(v.length === 1 && v[0].body === 'HOOK: v1' && v[0].saved_by === U.strategy, JSON.stringify(v));
+  const [d] = await as('strategy', 'select updated_by, created_by from library_docs where id=$1', [doc.id]);
+  expect(d.updated_by === U.admin && d.created_by === U.strategy, JSON.stringify(d));
+});
+await check('only the creator or admin can delete for good', async () => {
+  const del = await as('claude', 'delete from library_docs where id=$1 returning id', [doc.id]);
+  expect(del.length === 0, 'claude deleted someone else\'s doc');
+  const own = await as('strategy', 'delete from library_docs where id=$1 returning id', [doc.id]);
+  expect(own.length === 1, 'creator could not delete');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);
