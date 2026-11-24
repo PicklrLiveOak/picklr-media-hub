@@ -1,11 +1,12 @@
 // Team (admin only): add people, set role/department, flip individual permission
 // toggles, reset passwords, deactivate accounts.
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { PERMISSIONS } from '../lib/constants';
 import type { Profile } from '../lib/types';
 import { Avatar, ErrorNote, Field, PageHeader, Toast, Toggle } from '../components/ui';
+import { NotifyPrefs } from '../components/NotifySettings';
 
 // Calls the admin-users Edge Function (holds the service key server-side).
 async function adminCall(body: Record<string, unknown>) {
@@ -110,7 +111,14 @@ function EditPerson({ p, departments, onSaved }: { p: Profile; departments: { id
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const isSelf = me?.id === p.id;
-  const dirty = JSON.stringify(d) !== JSON.stringify(p);
+  // Notification settings save on their own, so leave them out of "unsaved changes"
+  const strip = (x: Profile) => JSON.stringify({ ...x, notify_prefs: null });
+  const dirty = strip(d) !== strip(p);
+  const [devices, setDevices] = useState<number | null>(null);
+  useEffect(() => {
+    supabase.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', p.id)
+      .then(({ count }) => setDevices(count ?? 0));
+  }, [p.id]);
 
   function pickRole(role: string) {
     const preset = presets.find((r) => r.role === role);
@@ -180,6 +188,15 @@ function EditPerson({ p, departments, onSaved }: { p: Profile; departments: { id
       </div>
 
       {dirty && <button className="btn btn-primary w-full" onClick={save}>Save changes</button>}
+
+      <div>
+        <h3 className="font-bold text-sm">Notifications</h3>
+        <p className="text-xs text-stone-500">
+          {devices === null ? '…' : devices === 0 ? 'Hasn’t turned on notifications on any device yet (they do that on their Me page).' : `Notifications on for ${devices} device${devices === 1 ? '' : 's'}.`}
+          {' '}Changes here save right away.
+        </p>
+        <NotifyPrefs person={p} onSaved={onSaved} />
+      </div>
 
       {!isSelf && (
         <div className="space-y-3 border-t border-line pt-3">

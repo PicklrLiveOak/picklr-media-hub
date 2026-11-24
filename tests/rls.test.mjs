@@ -434,5 +434,33 @@ await check('turning off the Calendar section hides it', async () => {
   await as('admin', `update profiles set permissions = permissions || '{section.calendar}' where id=$1`, [U.staff]);
 });
 
+console.log('\nPush notifications');
+await check('you can register your own device', async () => {
+  await as('staff', `select save_push_subscription('https://push.example/abc', 'k1', 'a1', 'iPhone')`);
+  const rows = await as('staff', 'select user_id from push_subscriptions');
+  expect(rows.length === 1 && rows[0].user_id === U.staff, JSON.stringify(rows));
+});
+await check('other people cannot see your devices; the admin can', async () => {
+  expect((await as('staff2', 'select * from push_subscriptions')).length === 0, 'staff2 saw a device');
+  expect((await as('admin', 'select * from push_subscriptions')).length === 1, 'admin could not see devices');
+});
+await check('signing in as someone else on the same phone moves the device', async () => {
+  await as('staff2', `select save_push_subscription('https://push.example/abc', 'k2', 'a2', 'iPhone')`);
+  expect((await as('staff', 'select * from push_subscriptions')).length === 0, 'still linked to the old person');
+  expect((await as('staff2', 'select * from push_subscriptions')).length === 1, 'not linked to the new person');
+});
+await check('nobody can add a device directly for someone else', () =>
+  expectError(as('staff', `insert into push_subscriptions (user_id, endpoint, p256dh, auth) values ($1, 'https://x', 'k', 'a')`, [U.staff2])));
+await check('you can change your own notification settings', async () => {
+  const rows = await as('staff', `update profiles set notify_prefs = '{"chat.general": false}' where id=$1 returning notify_prefs`, [U.staff]);
+  expect(rows[0]?.notify_prefs['chat.general'] === false, 'not saved');
+});
+await check('you cannot change someone else\'s settings; the admin can', async () => {
+  const mine = await as('staff', `update profiles set notify_prefs = '{}' where id=$1 returning id`, [U.staff2]);
+  expect(mine.length === 0, 'staff changed staff2');
+  const adm = await as('admin', `update profiles set notify_prefs = '{"chat.message": false}' where id=$1 returning id`, [U.staff2]);
+  expect(adm.length === 1, 'admin could not change settings');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

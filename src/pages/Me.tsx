@@ -1,10 +1,12 @@
 // Me: my profile, photo, password, install instructions, sign out.
-// (Notification settings + push arrive in step 2.)
+// Notifications: turn on phone alerts for this device + choose what to get.
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { prepareFile, uploadFile } from '../lib/upload';
 import { Avatar, ErrorNote, Field, PageHeader, Toast } from '../components/ui';
+import NotifySettings from '../components/NotifySettings';
+import { disablePush } from '../lib/push';
 
 export default function Me() {
   const { me, reload, deptName, presets } = useAuth();
@@ -55,6 +57,8 @@ export default function Me() {
         </label>
       </section>
 
+      <NotifySettings />
+
       <section className="card p-4 space-y-3">
         <h2 className="h-display text-lg">Profile</h2>
         <Field label="Name"><input className="input" value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} /></Field>
@@ -79,7 +83,7 @@ export default function Me() {
       <ErrorNote error={error} />
       <Toast msg={msg} onDone={() => setMsg('')} />
 
-      <button className="btn btn-ghost w-full" onClick={() => supabase.auth.signOut()}>Sign out</button>
+      <button className="btn btn-ghost w-full" onClick={async () => { await disablePush().catch(() => {}); await supabase.auth.signOut(); }}>Sign out</button>
     </div>
   );
 }

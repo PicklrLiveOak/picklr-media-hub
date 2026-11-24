@@ -1,7 +1,8 @@
 // App frame: top bar + bottom tab bar (phone) that shows only the sections
 // this person is allowed to open.
 import { useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { resyncPush } from '../lib/push';
 import { useAuth } from '../lib/auth';
 import { useChats } from '../lib/chats';
 import { useNotifications } from '../lib/notifications';
@@ -12,6 +13,23 @@ export default function Layout() {
   const { totalUnread } = useChats();
   const { unread } = useNotifications();
   const { pathname } = useLocation();
+
+  const nav = useNavigate();
+  // This device's notifications follow whoever is signed in.
+  useEffect(() => { if (me?.id) resyncPush(); }, [me?.id]);
+  // Tapping a notification while the app is open → go to that page.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const onMsg = (e: MessageEvent) => { if (e.data?.type === 'open' && typeof e.data.url === 'string') nav(e.data.url); };
+    navigator.serviceWorker.addEventListener('message', onMsg);
+    return () => navigator.serviceWorker.removeEventListener('message', onMsg);
+  }, [nav]);
+  // App-icon badge = unread chats + unread notifications (clears when caught up)
+  useEffect(() => {
+    const n = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    const count = totalUnread + unread;
+    (count ? n.setAppBadge?.(count) : n.clearAppBadge?.())?.catch(() => {});
+  }, [totalUnread, unread]);
 
   // Every page opens at the top (otherwise it keeps the last page's scroll spot).
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);

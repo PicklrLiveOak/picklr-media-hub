@@ -13,6 +13,7 @@ export type Profile = {
   contact_email: string | null;
   avatar_path: string | null;
   permissions: string[];
+  notify_prefs: Record<string, boolean>;
   is_service_account: boolean;
   active: boolean;
 };

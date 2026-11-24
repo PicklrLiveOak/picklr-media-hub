@@ -438,3 +438,8 @@ verify_jwt = true
 # off; the function checks permissions itself for every other action.
 [functions.social-sync]
 verify_jwt = false
+
+# push-send: called by database triggers (no login). It only takes an id and
+# looks the row up itself; the "test" action checks the caller's login itself.
+[functions.push-send]
+verify_jwt = false

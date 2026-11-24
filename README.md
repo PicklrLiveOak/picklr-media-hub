@@ -197,3 +197,13 @@ A request's stage follows its status, so moving a card to "Ready for Execution" 
 
 ### Posting goals (Admin → Setup)
 Add goals like "3 Reels per week" or "20 Stories per month". Insights and the report track each week/month against them. Stories count from Instagram only; the sync now runs every 6 hours so each story is caught while it's live.
+
+## Step 5: phone push notifications
+
+Each person turns them on once per device: **Me → 🔔 Turn on notifications**, then **Send a test**.
+
+- **iPhone:** Safari → Share → *Add to Home Screen*, open Media Hub from that icon (iOS 16.4+), then turn them on. Safari tabs can't get notifications.
+- **Android / computers:** works in Chrome, Edge or Firefox; installing the app is optional.
+- **What gets sent:** chat messages (DMs/groups, General, request comments), @mentions, status changes on your requests, being scheduled, and new/approved requests for the Strategy/Execution teams.
+- **Choosing:** everyone picks what they get on their Me page; the admin can change anyone's on Admin → People. The 🔔 bell in the app always shows everything.
+- **How it works:** database triggers call the `push-send` Edge Function (Web Push with VAPID keys, free, no email). The private key is the `VAPID_KEYS` Supabase secret; the public key is in `src/lib/push.ts`.
